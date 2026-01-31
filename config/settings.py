@@ -10,9 +10,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------
 # Segurança
 # -------------
+# Garanta que a SECRET_KEY real esteja no .env em produção!
 SECRET_KEY = os.getenv('SECRET_KEY', 'troque-esta-chave-supersegura')
 DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('true', '1', 'sim', 'yes')
-# Suporta vírgula, espaço e mix para hosts
+
+# Suporta vírgula, espaço e mix para hosts. Adicione o domínio real no .env!
 ALLOWED_HOSTS = [
     host for host in os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').replace(',', ' ').split()
     if host
@@ -32,7 +34,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-
     # Seus apps
     'apps.cadastros',
     'apps.romaneio',
@@ -107,7 +108,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Sao_Paulo'
 USE_I18N = True
-USE_L10N = True
+USE_L10N = True  # Django 4+: deprecated, mas mantém para compatibilidade
 USE_TZ = True
 
 # -------------
@@ -121,12 +122,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
 
 # -------------
-# Opção de auto campo padrão
+# Auto campo padrão
 # -------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -------------
-# Django Messages (Bootstrap)
+# Django messages adaptado ao Bootstrap
 # -------------
 from django.contrib.messages import constants as messages
 MESSAGE_TAGS = {
@@ -138,12 +139,16 @@ MESSAGE_TAGS = {
 }
 
 # -------------
-# Espaço para configurações futuras
+# Produção: recomendações extras
 # -------------
+# Faça upload de estáticos com python manage.py collectstatic --noinput
+# Configure staticfiles/ e media/ com Nginx para servir em produção
+
+# Para e-mails de erro admins (opcional)
+# ADMINS = [('Seu Nome', 'seuemail@dominio.com.br')]
+# SERVER_EMAIL = 'erro@madereirajd.ferzion.com.br'
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# REST_FRAMEWORK = {}
-# CACHES = {}
-# CELERY_BROKER_URL = ''
+# EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, EMAIL_USE_SSL...
 
 # -------------
 # Debug helpers
@@ -151,3 +156,20 @@ MESSAGE_TAGS = {
 if DEBUG:
     print("DEBUG = True | Django rodando em ambiente de desenvolvimento!")
     print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+else:
+    # Segurança extra em produção
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # SECURE_SSL_REDIRECT = True  # descomente se for só https (com certbot)
+    # X_FRAME_OPTIONS = 'DENY'
+    # LOGGING = {...}  # recomende configurar logging para erros graves
+
+# -------------
+# Espaço para futuras integrações
+# -------------
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# REST_FRAMEWORK = {}
+# CACHES = {}
+# CELERY_BROKER_URL = ''
