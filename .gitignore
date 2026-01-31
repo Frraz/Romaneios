@@ -176,5 +176,3 @@ temp/
 # - static/ (código-fonte) pode ser versionado
 # - staticfiles/, media/, backups e rollbacks NUNCA
 # -------------------------------------------------
-
-#testando o ci/cd
