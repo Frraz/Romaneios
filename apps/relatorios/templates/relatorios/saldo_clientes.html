@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Relatório de Saldo de Clientes{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-balance-scale"></i> Relatório de Saldo de Clientes
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form class="row gy-2 gx-2 mb-3" method="get">
+            <div class="col-auto">
+                <select name="tipo_saldo" class="form-select">
+                    <option value="todos" {% if request.GET.tipo_saldo == "todos" or not request.GET.tipo_saldo %}selected{% endif %}>Todos</option>
+                    <option value="negativos" {% if request.GET.tipo_saldo == "negativos" %}selected{% endif %}>Negativos (Devendo)</option>
+                    <option value="positivos" {% if request.GET.tipo_saldo == "positivos" %}selected{% endif %}>Positivos (Crédito)</option>
+                    <option value="zerados" {% if request.GET.tipo_saldo == "zerados" %}selected{% endif %}>Zerados</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>CPF/CNPJ</th>
+                        <th class="text-end">Saldo</th>
+                        <th>Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>{{ cliente.nome }}</td>
+                        <td>{{ cliente.telefone|default:"—" }}</td>
+                        <td>{{ cliente.cpf_cnpj|default:"—" }}</td>
+                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}">
+                            R$ {{ cliente.saldo_atual|floatformat:2 }}
+                        </td>
+                        <td>
+                            {% if cliente.saldo_atual < 0 %}
+                                <span class="badge bg-danger">Devendo</span>
+                            {% elif cliente.saldo_atual > 0 %}
+                                <span class="badge bg-success">Crédito</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Zerado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Nenhum cliente encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

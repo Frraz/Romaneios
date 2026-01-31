@@ -1,0 +1,179 @@
+# =========================
+# Projeto: Gestão de Confinamento (Django + PostgreSQL)
+# =========================
+
+# -------------------------------------------------
+# Ambientes virtuais / dependências locais
+# -------------------------------------------------
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+pip-log.txt
+.python-version
+
+# Poetry / Pipenv
+.poetry/
+poetry.lock
+Pipfile
+Pipfile.lock
+
+# -------------------------------------------------
+# Configurações locais / segredos (NUNCA versionar)
+# -------------------------------------------------
+.env
+.env.*
+*.secret
+secret_*.json
+settings_local.py
+local_settings.py
+
+# -------------------------------------------------
+# Python compilados / cache
+# -------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Testes / Coverage / cache
+.pytest_cache/
+.coverage
+.coverage.*
+.cache/
+coverage.xml
+htmlcov/
+*.profile
+*.pstats
+
+# Linters / Type checkers
+mypy_cache/
+.dmypy.json
+pyrightcache/
+.pytype/
+.ruff_cache/
+
+# -------------------------------------------------
+# Build / Distribuição
+# -------------------------------------------------
+build/
+dist/
+wheelhouse/
+*.egg-info/
+*.egg
+.eggs/
+.installed.cfg
+
+# -------------------------------------------------
+# Logs / temporários
+# -------------------------------------------------
+*.log
+logs/
+log/
+deploy.log
+*.pid
+*.out
+*.err
+
+# -------------------------------------------------
+# Banco local / dumps
+# -------------------------------------------------
+*.dump
+*.sql
+db.sqlite3
+*.db
+
+# -------------------------------------------------
+# Front-end / Assets temporários
+# -------------------------------------------------
+node_modules/
+*.tsbuildinfo
+*.map
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -------------------------------------------------
+# IDEs / Editores
+# -------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.iml
+*.swp
+*.swo
+
+# -------------------------------------------------
+# Sistema Operacional
+# -------------------------------------------------
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+Icon?
+
+# -------------------------------------------------
+# Arquivos temporários / backup
+# -------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.orig
+*.old
+*.backup
+*.lock
+
+# -------------------------------------------------
+# Testes / snapshots
+# -------------------------------------------------
+snapshot_tests/
+snapshots/
+
+# -------------------------------------------------
+# Relatórios
+# -------------------------------------------------
+coverage/
+reports/
+report/
+*.lcov
+
+# -------------------------------------------------
+# Docker (overrides locais)
+# -------------------------------------------------
+docker-compose.override.yml
+.env.docker.local
+
+# -------------------------------------------------
+# Power BI / Exportações locais
+# -------------------------------------------------
+powerbi/
+*.pbix
+*.csv
+export/
+exports/
+
+# -------------------------------------------------
+# Arquivos gerados em runtime (PRODUÇÃO / DEPLOY)
+# -------------------------------------------------
+media/
+staticfiles/
+backups/
+rollbacks/
+rollback_*/
+tmp/
+temp/
+
+# -------------------------------------------------
+# GitHub Actions local
+# -------------------------------------------------
+.act/
+
+# -------------------------------------------------
+# Observações:
+# - Migrations DEVEM ser versionadas
+# - static/ (código-fonte) pode ser versionado
+# - staticfiles/, media/, backups e rollbacks NUNCA
+# -------------------------------------------------
+

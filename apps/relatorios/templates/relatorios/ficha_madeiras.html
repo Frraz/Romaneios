@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Ficha de Madeiras{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-tree"></i> Ficha de Madeiras
+    </div>
+    <div class="card-body">
+        <!-- Filtros por período -->
+        <form method="get" class="row gx-2 gy-2 mb-4">
+            <div class="col-md-2">
+                <label class="form-label">Mês</label>
+                <select name="mes" class="form-select">
+                    {% for m in "123456789012" %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>{{ forloop.counter }}</option>
+                    {% endfor %}
+                    {# Melhor ainda: context['meses'] = range(1,13) #}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ano</label>
+                <select name="ano" class="form-select">
+                    {% for i in "012" %}
+                        {% with ano_val=2024|add:forloop.counter0 %}
+                        <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>
+                            {{ ano_val }}
+                        </option>
+                        {% endwith %}
+                    {% endfor %}
+                    {# Melhor ainda: context['anos'] = [2024,2025,2026] #}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Relatório tabela -->
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tipo de Madeira</th>
+                        <th class="text-end">Qtd. (m³)</th>
+                        <th class="text-end">Valor Total</th>
+                        <th class="text-end">% no período</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if relatorio %}
+                        {% for item in relatorio %}
+                        <tr>
+                            <td><strong>{{ item.tipo_madeira__nome }}</strong></td>
+                            <td class="text-end">{{ item.total_m3|floatformat:3 }}</td>
+                            <td class="text-end">R$ {{ item.total_valor|floatformat:2 }}</td>
+                            <td class="text-end">
+                                {% widthratio item.total_valor relatorio_total_valor 100 %}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                Nenhum dado encontrado para este período.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                {% if relatorio %}
+                <tfoot>
+                    <tr class="table-active fw-bold">
+                        <th>TOTAL</th>
+                        <th class="text-end">{{ relatorio_total_m3|floatformat:3 }}</th>
+                        <th class="text-end">R$ {{ relatorio_total_valor|floatformat:2 }}</th>
+                        <th class="text-end">100%</th>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

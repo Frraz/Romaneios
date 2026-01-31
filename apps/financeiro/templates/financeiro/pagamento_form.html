@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar Pagamento{% else %}Novo Pagamento{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card mx-auto" style="max-width: 600px;">
+    <div class="card-header">
+        <i class="fas fa-money-bill-wave"></i>
+        {% if object %}Editar{% else %}Novo{% endif %} Pagamento
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mb-3">
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="mb-3">
+                {{ form.data_pagamento.label_tag }}
+                {{ form.data_pagamento }}
+                {% if form.data_pagamento.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.data_pagamento.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.cliente.label_tag }}
+                {{ form.cliente }}
+                {% if form.cliente.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.cliente.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.valor.label_tag }}
+                {{ form.valor }}
+                {% if form.valor.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.valor.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.tipo_pagamento.label_tag }}
+                {{ form.tipo_pagamento }}
+                {% if form.tipo_pagamento.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.tipo_pagamento.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.descricao.label_tag }}
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.descricao.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="{% url 'financeiro:pagamento_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

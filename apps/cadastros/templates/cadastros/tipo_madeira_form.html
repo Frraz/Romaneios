@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Editar Tipo de Madeira{% else %}Novo Tipo de Madeira{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card mx-auto" style="max-width: 600px;">
+    <div class="card-header">
+        <i class="fas fa-tree"></i>
+        {% if object %}Editar{% else %}Novo{% endif %} Tipo de Madeira
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mb-3">
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="mb-3">
+                {{ form.nome.label_tag }}
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.nome.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.preco_normal.label_tag }}
+                {{ form.preco_normal }}
+                {% if form.preco_normal.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.preco_normal.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                {{ form.preco_com_frete.label_tag }}
+                {{ form.preco_com_frete }}
+                {% if form.preco_com_frete.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.preco_com_frete.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="form-check mb-3">
+                {{ form.ativo }}
+                {{ form.ativo.label_tag }}
+                {% if form.ativo.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.ativo.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{% url 'cadastros:tipo_madeira_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if object %}Editar Romaneio{% else %}Novo Romaneio{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .formset-row {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        position: relative;
+    }
+    .delete-row {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    .valor-total-item {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--success-color);
+    }
+    #total-geral {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-file-invoice"></i>
+                {% if object %}Editar Romaneio #{{ object.numero_romaneio }}{% else %}Novo Romaneio{% endif %}
+            </h1>
+            <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="romaneio-form" autocomplete="off">
+    {% csrf_token %}
+
+    <!-- Alert exibe erros do form principal -->
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger mb-3">
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Dados do Romaneio -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> Dados do Romaneio
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nº Romaneio *</label>
+                            {{ form.numero_romaneio }}
+                            {% if form.numero_romaneio.errors %}
+                                <div class="text-danger small">{{ form.numero_romaneio.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Data *</label>
+                            {{ form.data_romaneio }}
+                            {% if form.data_romaneio.errors %}
+                                <div class="text-danger small">{{ form.data_romaneio.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo *</label>
+                            {{ form.tipo_romaneio }}
+                            {% if form.tipo_romaneio.errors %}
+                                <div class="text-danger small">{{ form.tipo_romaneio.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cliente *</label>
+                            {{ form.cliente }}
+                            {% if form.cliente.errors %}
+                                <div class="text-danger small">{{ form.cliente.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Motorista</label>
+                            {{ form.motorista }}
+                            {% if form.motorista.errors %}
+                                <div class="text-danger small">{{ form.motorista.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-calculator"></i> Resumo
+                </div>
+                <div class="card-body text-center">
+                    <p class="mb-2">Total do Romaneio:</p>
+                    <p id="total-geral">R$ 0,00</p>
+                    <hr>
+                    <p class="mb-1 small text-muted">Total m³: <span id="total-m3">0.000</span></p>
+                    <p class="text-secondary small">* Preenchimento obrigatório</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Itens do Romaneio -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-list"></i> Itens do Romaneio
+        </div>
+        <div class="card-body">
+            {% if formset.non_form_errors %}
+                <div class="alert alert-danger mb-3">
+                    {% for error in formset.non_form_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {{ formset.management_form }}
+            <div id="formset-container">
+                {% for form in formset %}
+                <div class="formset-row" data-formset-index="{{ forloop.counter0 }}">
+                    {% if formset.can_delete %}
+                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Tipo de Madeira *</label>
+                            {{ form.tipo_madeira }}
+                            {% if form.tipo_madeira.errors %}
+                                <div class="text-danger small">{{ form.tipo_madeira.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Quantidade (m³) *</label>
+                            {{ form.quantidade_m3 }}
+                            {% if form.quantidade_m3.errors %}
+                                <div class="text-danger small">{{ form.quantidade_m3.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Valor/m³</label>
+                            {{ form.valor_unitario }}
+                            {% if form.valor_unitario.errors %}
+                                <div class="text-danger small">{{ form.valor_unitario.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Total Item</label>
+                            <div class="valor-total-item" data-total-index="{{ forloop.counter0 }}">
+                                R$ 0,00
+                            </div>
+                        </div>
+                        {% if formset.can_delete %}
+                        <div class="d-none">
+                            {{ form.DELETE }}
+                        </div>
+                        {% endif %}
+                        {{ form.id }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="btn btn-outline-primary mt-3" onclick="adicionarLinha()">
+                <i class="fas fa-plus"></i> Adicionar Item
+            </button>
+        </div>
+    </div>
+
+    <!-- Botões -->
+    <div class="row">
+        <div class="col-12 d-flex flex-wrap gap-3">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save"></i> Salvar Romaneio
+            </button>
+            <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Dados dos preços das madeiras (do backend)
+    const precosMadeiras = {{ tipos_madeira_json|safe }};
+
+    // Atualizar preço quando seleciona tipo de madeira
+    function atualizarPreco(selectElement) {
+        const row = $(selectElement).closest('.formset-row');
+        const tipoMadeiraId = $(selectElement).val();
+        const tipoRomaneio = $('#id_tipo_romaneio').val();
+        const inputValorUnitario = row.find('input[name$="valor_unitario"]');
+        if (tipoMadeiraId && precosMadeiras[tipoMadeiraId]) {
+            const preco = tipoRomaneio === 'COM_FRETE' 
+                ? precosMadeiras[tipoMadeiraId].com_frete 
+                : precosMadeiras[tipoMadeiraId].normal;
+            inputValorUnitario.val(preco.toFixed(2));
+            calcularTotal(inputValorUnitario[0]);
+        }
+    }
+
+    // Calcular total do item
+    function calcularTotal(inputElement) {
+        const row = $(inputElement).closest('.formset-row');
+        const quantidade = parseFloat(row.find('input[name$="quantidade_m3"]').val()) || 0;
+        const valorUnitario = parseFloat(row.find('input[name$="valor_unitario"]').val()) || 0;
+        const total = quantidade * valorUnitario;
+        const index = row.data('formset-index');
+        $(`[data-total-index="${index}"]`).text(`R$ ${total.toFixed(2)}`);
+        calcularTotalGeral();
+    }
+
+    // Calcular total geral
+    function calcularTotalGeral() {
+        let totalGeral = 0;
+        let totalM3 = 0;
+        $('.formset-row').each(function() {
+            if (!$(this).find('input[name$="DELETE"]').is(':checked')) {
+                const quantidade = parseFloat($(this).find('input[name$="quantidade_m3"]').val()) || 0;
+                const valorUnitario = parseFloat($(this).find('input[name$="valor_unitario"]').val()) || 0;
+                totalGeral += quantidade * valorUnitario;
+                totalM3 += quantidade;
+            }
+        });
+        $('#total-geral').text(`R$ ${totalGeral.toFixed(2)}`);
+        $('#total-m3').text(totalM3.toFixed(3));
+    }
+
+    // Remover linha
+    function removerLinha(button) {
+        const row = $(button).closest('.formset-row');
+        row.find('input[name$="DELETE"]').prop('checked', true);
+        row.hide();
+        calcularTotalGeral();
+    }
+
+    // Atualiza preços ao mudar o tipo de romaneio
+    $(document).on('change', '#id_tipo_romaneio', function() {
+        $('.tipo-madeira-select').each(function() {
+            atualizarPreco(this);
+        });
+    });
+
+    // Recalcula totais ao alterar itens
+    $(document).on('change', 'input[name$="quantidade_m3"], input[name$="valor_unitario"]', function() {
+        calcularTotal(this);
+    });
+
+    // Inicializa preços e totais ao carregar
+    $(document).ready(function() {
+        $('.tipo-madeira-select').each(function() {
+            atualizarPreco(this);
+        });
+        $('.formset-row').each(function() {
+            calcularTotal($(this).find('input[name$="quantidade_m3"]')[0]);
+        });
+    });
+</script>
+{% endblock %}

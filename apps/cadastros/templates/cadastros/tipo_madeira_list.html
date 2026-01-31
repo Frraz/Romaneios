@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Tipos de Madeira{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-tree"></i> Tipos de Madeira</span>
+            <a href="{% url 'cadastros:tipo_madeira_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Novo Tipo
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Tabela de tipos -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th class="text-end">Preço Normal</th>
+                        <th class="text-end">Preço com Frete</th>
+                        <th>Status</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for madeira in tipos %}
+                    <tr>
+                        <td>{{ madeira.nome }}</td>
+                        <td class="text-end">R$ {{ madeira.preco_normal|floatformat:2 }}</td>
+                        <td class="text-end">R$ {{ madeira.preco_com_frete|floatformat:2 }}</td>
+                        <td>
+                            {% if madeira.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'cadastros:tipo_madeira_update' madeira.id %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'cadastros:tipo_madeira_delete' madeira.id %}" class="btn btn-sm btn-danger" title="Excluir" onclick="return confirmarExclusao();">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Nenhum tipo de madeira cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Paginação -->
+        {% if is_paginated %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo; Primeiro</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&lsaquo; Anterior</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima &rsaquo;</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

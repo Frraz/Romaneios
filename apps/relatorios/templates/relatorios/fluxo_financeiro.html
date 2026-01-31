@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Fluxo Financeiro{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-exchange-alt"></i> Fluxo Financeiro
+    </div>
+    <div class="card-body">
+        <!-- Filtros de período -->
+        <form method="get" class="row gx-2 gy-2 mb-4">
+            <div class="col-md-2">
+                <label class="form-label">Mês</label>
+                <select name="mes" class="form-select">
+                    {% for m in "123456789012" %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>{{ forloop.counter }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ano</label>
+                <select name="ano" class="form-select">
+                    {% for i in "012" %}
+                        {% with ano_val=2024|add:forloop.counter0 %}
+                        <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>{{ ano_val }}</option>
+                        {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+        
+        <!-- Resumo do mês -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <i class="fas fa-cash-register text-primary"></i>
+                    <div class="stat-value text-primary">R$ {{ vendas|floatformat:2 }}</div>
+                    <div class="stat-label">Vendas do mês</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <i class="fas fa-money-check-alt text-success"></i>
+                    <div class="stat-value text-success">R$ {{ pagamentos|floatformat:2 }}</div>
+                    <div class="stat-label">Pagamentos recebidos</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <i class="fas fa-balance-scale-left text-warning"></i>
+                    <div class="stat-value {{ saldo_mes_classe }}">
+                        R$ {{ saldo_mes|floatformat:2 }}
+                    </div>
+                    <div class="stat-label">Saldo do mês (Recebido - Vendas)</div>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Tabela detalhada de vendas -->
+        <div class="mb-4">
+            <h5><i class="fas fa-file-invoice-dollar"></i> Vendas do mês</h5>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th class="text-end">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venda in vendas_detalhadas %}
+                        <tr>
+                            <td>{{ venda.data_romaneio|date:"d/m/Y" }}</td>
+                            <td>{{ venda.cliente.nome }}</td>
+                            <td class="text-end text-primary">R$ {{ venda.valor_total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">Nenhuma venda neste período.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabela detalhada de pagamentos -->
+        <div class="mb-4">
+            <h5><i class="fas fa-money-bill-alt"></i> Pagamentos recebidos</h5>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th class="text-end">Valor</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pagamento in pagamentos_detalhados %}
+                        <tr>
+                            <td>{{ pagamento.data_pagamento|date:"d/m/Y" }}</td>
+                            <td>{{ pagamento.cliente.nome }}</td>
+                            <td class="text-end text-success">R$ {{ pagamento.valor|floatformat:2 }}</td>
+                            <td><span class="badge bg-info text-dark">{{ pagamento.get_tipo_pagamento_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Nenhum pagamento neste período.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

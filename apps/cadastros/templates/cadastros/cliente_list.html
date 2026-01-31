@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-users"></i> Lista de Clientes</span>
+            <a href="{% url 'cadastros:cliente_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Novo Cliente
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form class="row gy-2 gx-2 mb-3" method="get">
+            <div class="col-auto">
+                <input type="text" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Buscar por nome...">
+            </div>
+            <div class="col-auto">
+                <select name="saldo" class="form-select">
+                    <option value="">Saldo (todos)</option>
+                    <option value="negativos" {% if request.GET.saldo == "negativos" %}selected{% endif %}>Negativos (devendo)</option>
+                    <option value="positivos" {% if request.GET.saldo == "positivos" %}selected{% endif %}>Positivos (crédito)</option>
+                    <option value="zerados" {% if request.GET.saldo == "zerados" %}selected{% endif %}>Zerados</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="ordenar" class="form-select">
+                    <option value="nome" {% if request.GET.ordenar == "nome" or not request.GET.ordenar %}selected{% endif %}>Ordenar por Nome</option>
+                    <option value="saldo" {% if request.GET.ordenar == "saldo" %}selected{% endif %}>Menor saldo</option>
+                    <option value="saldo_desc" {% if request.GET.ordenar == "saldo_desc" %}selected{% endif %}>Maior saldo</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+            </div>
+        </form>
+        <!-- Tabela -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Telefone</th>
+                        <th scope="col">CPF/CNPJ</th>
+                        <th scope="col" class="text-end">Saldo</th>
+                        <th scope="col">Situação</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>{{ cliente.nome }}</td>
+                        <td>{{ cliente.telefone|default:"—" }}</td>
+                        <td>{{ cliente.cpf_cnpj|default:"—" }}</td>
+                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}">
+                            R$ {{ cliente.saldo_atual|floatformat:2 }}
+                        </td>
+                        <td>
+                            {% if cliente.saldo_atual < 0 %}
+                                <span class="badge bg-danger">Devendo</span>
+                            {% elif cliente.saldo_atual > 0 %}
+                                <span class="badge bg-success">Crédito</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Zerado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'cadastros:cliente_update' cliente.id %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'cadastros:cliente_delete' cliente.id %}" class="btn btn-sm btn-danger" title="Excluir" onclick="return confirmarExclusao();">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Nenhum cliente encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Paginação -->
+        {% if is_paginated %}
+        {% with params=request.GET.urlencode|cut:'page=' %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{{ params }}">&laquo; Primeiro</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ params }}">&lsaquo; Anterior</a>
+                    </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ params }}">Próxima &rsaquo;</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ params }}">Última &raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

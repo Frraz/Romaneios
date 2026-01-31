@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Romaneios{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-file-invoice"></i> Lista de Romaneios</span>
+            <a href="{% url 'romaneio:romaneio_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Novo Romaneio
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form method="get" class="row gx-2 gy-2 mb-3">
+            <div class="col-md-2">
+                <input type="text" name="numero" value="{{ request.GET.numero }}" class="form-control" placeholder="Nº Romaneio">
+            </div>
+            <div class="col-md-3">
+                <select name="cliente" class="form-select">
+                    <option value="">Todos os Clientes</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
+                        {{ cliente.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="mes" class="form-select">
+                    <option value="">Mês</option>
+                    {% for m in '123456789012' %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>
+                        {{ forloop.counter }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="ano" class="form-select">
+                    <option value="">Ano</option>
+                    {# Corrigido: NÃO use make_list!!! Melhore passando uma lista na view:
+                       context['anos'] = [2024, 2025, 2026] #}
+                    {% for i in "012" %}
+                        {% with ano_val=2024|add:forloop.counter0 %}
+                            <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>
+                                {{ ano_val }}
+                            </option>
+                        {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Totais do período -->
+        <div class="mb-3">
+            <span class="badge bg-primary me-2">
+                <i class="fas fa-cube"></i> Total m³: {{ total_m3_periodo|floatformat:3 }}
+            </span>
+            <span class="badge bg-success me-2">
+                <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ total_valor_periodo|floatformat:2 }}
+            </span>
+            <span class="text-muted ms-2">({{ romaneios|length }} romaneios)</span>
+        </div>
+
+        <!-- Tabela de romaneios -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nº Romaneio</th>
+                        <th>Data</th>
+                        <th>Cliente</th>
+                        <th>Motorista</th>
+                        <th>Tipo</th>
+                        <th class="text-end">m³</th>
+                        <th class="text-end">Valor</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for romaneio in romaneios %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'romaneio:romaneio_detail' romaneio.id %}" class="fw-bold text-decoration-none">
+                                {{ romaneio.numero_romaneio }}
+                            </a>
+                        </td>
+                        <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
+                        <td>{{ romaneio.cliente.nome }}</td>
+                        <td>{{ romaneio.motorista.nome|default:"—" }}</td>
+                        <td>
+                            {% if romaneio.tipo_romaneio == "NORMAL" %}
+                                <span class="badge bg-primary">Normal</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Com Frete</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
+                        <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'romaneio:romaneio_update' romaneio.id %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">Nenhum romaneio encontrado para os filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if is_paginated %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{{ request.GET.urlencode|cut:'page='|yesno:',,' }}" >&laquo; Primeiro</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:',,' }}" >&lsaquo; Anterior</a>
+                    </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:',,' }}" >Próxima &rsaquo;</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode|cut:'page='|yesno:',,' }}" >Última &raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

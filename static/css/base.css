@@ -1,0 +1,117 @@
+:root {
+    --primary-color: #2c5530;
+    --secondary-color: #5a8c5e;
+    --accent-color: #f8b739;
+    --danger-color: #dc3545;
+    --success-color: #28a745;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+/* Wrapper/content */
+.content-wrapper {
+    min-height: calc(100vh - 100px);
+    padding: 2rem 0;
+}
+@media (max-width: 700px) {
+    .content-wrapper {
+        padding: 1rem 0.2rem;
+    }
+}
+
+/* Card custom */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+}
+.card-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: #fff;
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* Bootstrap override & Botões */
+.btn-primary,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+.btn-primary:hover,
+.btn-primary:active:focus {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+/* Saldos */
+.saldo-positivo {
+    color: var(--success-color);
+    font-weight: 600;
+}
+.saldo-negativo {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+.saldo-zerado {
+    color: #888;
+    font-weight: 600;
+}
+
+/* Cards de estatísticas */
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1rem;
+}
+.stat-card i, .stat-card .svg-inline--fa {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+.stat-card .stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Ajuste para select2 em Bootstrap 5 */
+.select2-container .select2-selection--single {
+    height: 38px;
+    padding: 5px 15px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    font-size: 16px;
+}
+
+/* Adicional para mobile-footer/margens */
+footer {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}

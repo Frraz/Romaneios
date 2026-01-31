@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Romaneio de Madeiras{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6">
+            <i class="fas fa-chart-line"></i> Dashboard
+        </h1>
+        <p class="text-muted">Visão geral do mês {{ mes }}/{{ ano }}</p>
+    </div>
+</div>
+
+<!-- O restante do dashboard permanece igual! -->
+
+<!-- Cards de Estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="stat-card h-100">
+            <i class="fas fa-cube text-primary"></i>
+            <div class="stat-value text-primary">{{ total_m3_mes|floatformat:3 }}</div>
+            <div class="stat-label">m³ vendidos no mês</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="stat-card h-100">
+            <i class="fas fa-dollar-sign text-success"></i>
+            <div class="stat-value text-success">R$ {{ total_faturado_mes|floatformat:2 }}</div>
+            <div class="stat-label">Faturamento do mês</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="stat-card h-100">
+            <i class="fas fa-file-invoice text-info"></i>
+            <div class="stat-value text-info">{{ qtd_romaneios_mes }}</div>
+            <div class="stat-label">Romaneios no mês</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="stat-card h-100">
+            <i class="fas fa-exclamation-triangle text-danger"></i>
+            <div class="stat-value text-danger">R$ {{ saldo_total_receber|floatformat:2 }}</div>
+            <div class="stat-label">Saldo a receber</div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos e Tabelas -->
+<div class="row">
+    <!-- Maiores Devedores -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-users"></i> Top 5 - Maiores Devedores
+            </div>
+            <div class="card-body">
+                {% if maiores_devedores %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th class="text-end">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cliente in maiores_devedores %}
+                            <tr>
+                                <td>{{ cliente.nome }}</td>
+                                <td class="text-end saldo-negativo">
+                                    R$ {{ cliente.saldo_atual|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">Nenhum devedor no momento</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Clientes do Mês -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-trophy"></i> Top 5 - Clientes do Mês
+            </div>
+            <div class="card-body">
+                {% if top_clientes_mes %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th class="text-end">Total Comprado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_clientes_mes %}
+                            <tr>
+                                <td>{{ item.cliente__nome }}</td>
+                                <td class="text-end text-success">
+                                    R$ {{ item.total_comprado|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">Nenhuma venda no período</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

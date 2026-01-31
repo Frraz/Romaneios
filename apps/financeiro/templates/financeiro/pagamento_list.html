@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Pagamentos{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-money-bill-wave"></i> Lista de Pagamentos</span>
+            <a href="{% url 'financeiro:pagamento_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Novo Pagamento
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filtros -->
+        <form method="get" class="row gx-2 gy-2 mb-3">
+            <div class="col-md-3">
+                <select name="cliente" class="form-select">
+                    <option value="">Todos os Clientes</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
+                        {{ cliente.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="mes" class="form-select">
+                    <option value="">Mês</option>
+                    {% for m in "123456789012" %}
+                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>{{ forloop.counter }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="ano" class="form-select">
+                    <option value="">Ano</option>
+                    {% for i in "012" %}
+                        {% with ano_val=2024|add:forloop.counter0 %}
+                        <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>{{ ano_val }}</option>
+                        {% endwith %}
+                    {% endfor %}
+                    {# Melhor ainda: passe lista de anos pelo contexto: context['anos'] = [2024,2025,2026] #}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Total do período -->
+        <div class="mb-3">
+            <span class="badge bg-success me-2">
+                <i class="fas fa-dollar-sign"></i> Total Período: R$ {{ total_periodo|floatformat:2 }}
+            </span>
+            <span class="text-muted ms-2">({{ pagamentos|length }} pagamentos)</span>
+        </div>
+
+        <!-- Tabela de pagamentos -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Cliente</th>
+                        <th class="text-end">Valor</th>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pagamento in pagamentos %}
+                    <tr>
+                        <td>{{ pagamento.data_pagamento|date:"d/m/Y" }}</td>
+                        <td>{{ pagamento.cliente.nome }}</td>
+                        <td class="text-end text-success">R$ {{ pagamento.valor|floatformat:2 }}</td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ pagamento.get_tipo_pagamento_display }}</span>
+                        </td>
+                        <td class="text-muted">{{ pagamento.descricao|default:"—" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'financeiro:pagamento_update' pagamento.id %}" class="btn btn-sm btn-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Nenhum pagamento encontrado para os filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if is_paginated %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% with params=request.GET.urlencode|cut:'page=' %}
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page=1{{ params }}">&laquo; Primeiro</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ params }}">&lsaquo; Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{{ params }}">Próxima &rsaquo;</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ params }}">Última &raquo;</a></li>
+                    {% endif %}
+                {% endwith %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
