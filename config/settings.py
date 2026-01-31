@@ -17,6 +17,10 @@ ALLOWED_HOSTS = [
     if host
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://madereirajd.ferzion.com.br"
+]
+
 LOGIN_URL = '/accounts/login/'
 
 # -------------
@@ -139,6 +143,7 @@ MESSAGE_TAGS = {
 # -------------
 if not DEBUG:
     # Segurança extra em produção
+    SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
