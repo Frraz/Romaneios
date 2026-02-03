@@ -3,12 +3,11 @@ name: Deploy to VPS on push
 on:
   push:
     branches:
-      - main  # ajuste para o branch real de deploy
+      - main  # ajuste para o branch do seu deploy real
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,13 +26,19 @@ jobs:
         run: |
           echo "Iniciando deploy remoto"
           ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
-            set -e
+            set -euo pipefail
             echo 'Entrando na pasta do projeto'
             cd /var/www/docker-instances/MadereiraJD
             echo 'Fazendo pull do repositório'
+            git config --global --add safe.directory /var/www/docker-instances/MadereiraJD
             git pull
+            git branch --show-current
             echo 'Hash do commit atual:'
             git rev-parse HEAD
+            if [ ! -d ".venv" ]; then
+              echo 'Virtualenv não existe! Crie manualmente antes do deploy automatizado.'
+              exit 1
+            fi
             echo 'Ativando virtualenv'
             source .venv/bin/activate
             echo 'Instalando requirements'
@@ -46,4 +51,3 @@ jobs:
             sudo systemctl restart madereirajd
             echo 'Deploy finalizado com sucesso!'
           "
-          
