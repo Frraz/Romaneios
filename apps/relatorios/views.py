@@ -1,7 +1,10 @@
 from django.views.generic import TemplateView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum, Count
+from django.http import HttpResponse
 from datetime import datetime
+import csv
+
 from apps.romaneio.models import Romaneio, ItemRomaneio
 from apps.financeiro.models import Pagamento
 from apps.cadastros.models import Cliente
@@ -24,7 +27,7 @@ class RelatorioRomaneiosView(ListView):
     context_object_name = 'romaneios'
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related('cliente', 'motorista')
         mes, ano = get_mes_ano(self.request)
         cliente_id = self.request.GET.get('cliente')
         queryset = queryset.filter(
@@ -33,15 +36,67 @@ class RelatorioRomaneiosView(ListView):
         )
         if cliente_id:
             queryset = queryset.filter(cliente_id=cliente_id)
-        return queryset.select_related('cliente', 'motorista')
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mes, ano = get_mes_ano(self.request)
         context['mes'] = mes
         context['ano'] = ano
-        context['clientes'] = Cliente.objects.all()
+        context['clientes'] = Cliente.objects.filter(ativo=True).order_by('nome')
+        # Faixa de anos disponíveis p/ select
+        context['anos'] = sorted(set(q.data_romaneio.year for q in self.model.objects.all()))
+        context['meses'] = range(1, 13)
+        if not context['anos']:
+            context['anos'] = [datetime.now().year]
+        # Soma total m³ e valor do período (base: ItemRomaneio)
+        items = ItemRomaneio.objects.filter(
+            romaneio__data_romaneio__month=mes,
+            romaneio__data_romaneio__year=ano,
+        )
+        cliente_id = self.request.GET.get("cliente")
+        if cliente_id:
+            items = items.filter(romaneio__cliente_id=cliente_id)
+        total_m3_periodo = items.aggregate(soma=Sum('quantidade_m3'))['soma'] or 0
+        total_valor_periodo = items.aggregate(soma=Sum('valor_total'))['soma'] or 0
+        context['total_m3_periodo'] = total_m3_periodo
+        context['total_valor_periodo'] = total_valor_periodo
         return context
+
+def ficha_romaneios_export(request):
+    """Exporta relatório de romaneio detalhado por item em CSV."""
+    mes, ano = get_mes_ano(request)
+    cliente_id = request.GET.get("cliente")
+    qs = Romaneio.objects.filter(
+        data_romaneio__month=mes,
+        data_romaneio__year=ano
+    )
+    if cliente_id:
+        qs = qs.filter(cliente_id=cliente_id)
+    qs = qs.select_related('cliente', 'motorista')
+    response = HttpResponse(content_type="text/csv")
+    response['Content-Disposition'] = f'attachment; filename="relatorio_romaneios_{mes}_{ano}.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        "Data", "Cliente", "Espécie", "Comp", "Rôdo", "Desconto", "Total (em M³)", "Observação"
+    ])
+    total_m3_geral = 0
+    for romaneio in qs:
+        itens = ItemRomaneio.objects.filter(romaneio=romaneio)
+        for item in itens:
+            writer.writerow([
+                romaneio.data_romaneio.strftime("%d/%m/%Y"),
+                romaneio.cliente.nome,
+                getattr(item, 'tipo_madeira', None) and item.tipo_madeira.nome or '',
+                getattr(item, 'comprimento', ''),
+                getattr(item, 'rodo', ''),
+                getattr(item, 'desconto', ''),
+                float(item.quantidade_m3),
+                getattr(item, 'observacao', '') if getattr(item, 'observacao', None) else "",
+            ])
+            total_m3_geral += float(item.quantidade_m3)
+    writer.writerow(["", "", "", "", "", "Total geral (M³)", total_m3_geral, ""])
+    return response
 
 class RelatorioMadeirasView(TemplateView):
     template_name = 'relatorios/ficha_madeiras.html'
@@ -77,9 +132,7 @@ class RelatorioFluxoView(TemplateView):
             data_pagamento__year=ano
         ).aggregate(total=Sum('valor'))['total'] or 0
 
-        # --- CORREÇÃO CRUCIAL: variável para sinal de saldo ---
         saldo_mes = pagamentos - vendas
-        # define classe para saldo positivo/negativo/zero
         if saldo_mes > 0:
             saldo_mes_classe = 'text-success'
         elif saldo_mes < 0:
@@ -93,18 +146,14 @@ class RelatorioFluxoView(TemplateView):
         context['vendas'] = vendas
         context['pagamentos'] = pagamentos
         context['saldo_mes'] = saldo_mes
-
-        # EXTRAS: vendas e pagamentos detalhados do mês
         context['vendas_detalhadas'] = Romaneio.objects.filter(
             data_romaneio__month=mes,
             data_romaneio__year=ano
         )
-
         context['pagamentos_detalhados'] = Pagamento.objects.filter(
             data_pagamento__month=mes,
             data_pagamento__year=ano
         ).select_related('cliente')
-
         return context
 
 class RelatorioSaldoClientesView(ListView):
@@ -136,13 +185,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mes, ano = get_mes_ano(self.request)
-
         romaneios_mes = Romaneio.objects.filter(
             data_romaneio__month=mes,
             data_romaneio__year=ano
         )
         totais_mes = romaneios_mes.aggregate(
-            total_m3=Sum('m3_total'),
+            total_m3=Sum('m3_total'),  # <-- campo correto!
             total_valor=Sum('valor_total'),
             qtd_romaneios=Count('id')
         )
@@ -152,25 +200,21 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context['total_faturado_mes'] = totais_mes['total_valor'] or 0
         context['qtd_romaneios_mes'] = totais_mes['qtd_romaneios'] or 0
 
-        # Saldo total a receber = soma dos débitos (clientes negativos)
         todos_clientes = Cliente.objects.all()
         saldos_negativos = [c.saldo_atual for c in todos_clientes if c.saldo_atual < 0]
         context['saldo_total_receber'] = abs(sum(saldos_negativos)) if saldos_negativos else 0
 
-        # Top 5 maiores devedores
         devedores = sorted(
             [c for c in todos_clientes if c.saldo_atual < 0],
             key=lambda c: c.saldo_atual
         )[:5]
         context['maiores_devedores'] = devedores
 
-        # Top 5 clientes que mais compraram no mês
         top_clientes = romaneios_mes.values('cliente__nome').annotate(
             total_comprado=Sum('valor_total')
         ).order_by('-total_comprado')[:5]
         context['top_clientes_mes'] = top_clientes
 
-        # Vendas por tipo de madeira no mês
         vendas_por_madeira = ItemRomaneio.objects.filter(
             romaneio__data_romaneio__month=mes,
             romaneio__data_romaneio__year=ano

@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .input-cpf-cnpj {
+        letter-spacing: 0.06em;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card mx-auto" style="max-width: 600px;">
     <div class="card-header">
@@ -8,7 +17,7 @@
         {% if object %}Editar{% else %}Novo{% endif %} Cliente
     </div>
     <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" novalidate autocomplete="off">
             {% csrf_token %}
             {% if form.non_field_errors %}
                 <div class="alert alert-danger mb-3">
@@ -34,6 +43,9 @@
                         {% for error in form.cpf_cnpj.errors %}<div>{{ error }}</div>{% endfor %}
                     </div>
                 {% endif %}
+                <small class="form-text text-muted">
+                    Informe um <b>CPF</b> (xxx.xxx.xxx-xx) ou <b>CNPJ</b> (xx.xxx.xxx/xxxx-xx).
+                </small>
             </div>
             <div class="mb-3">
                 {{ form.telefone.label_tag }}
@@ -73,4 +85,25 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script>
+    // Máscara dinâmica: CPF ou CNPJ
+    function setCpfCnpjMask() {
+        const $input = $('.input-cpf-cnpj');
+        $input.each(function(){
+            $(this).unmask();
+            let val = $(this).val().replace(/\D/g, '');
+            if (val.length > 11) {
+                $(this).mask("00.000.000/0000-00");
+            } else {
+                $(this).mask("000.000.000-00");
+            }
+        });
+    }
+    $(document).on("input", ".input-cpf-cnpj", setCpfCnpjMask);
+    $(document).ready(setCpfCnpjMask);
+</script>
 {% endblock %}

@@ -23,6 +23,7 @@ class PagamentoListView(LoginRequiredMixin, ListView):
         ano = self.request.GET.get('ano')
         cliente_id = self.request.GET.get('cliente')
 
+        # Se nenhum filtro de mês/ano, exibe o mês/ano atual!
         if mes and ano:
             try:
                 mes = int(mes)
@@ -48,8 +49,7 @@ class PagamentoListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['clientes'] = Cliente.objects.filter(ativo=True).order_by('nome')
-        total = self.get_queryset().aggregate(Sum('valor'))['valor__sum'] or 0
-        context['total_periodo'] = total
+        context['total_periodo'] = self.get_queryset().aggregate(Sum('valor'))['valor__sum'] or 0
         return context
 
 class PagamentoCreateView(LoginRequiredMixin, CreateView):
@@ -62,7 +62,6 @@ class PagamentoCreateView(LoginRequiredMixin, CreateView):
         self.object = form.save(commit=False)
         self.object.usuario_cadastro = self.request.user
         self.object.save()
-        # saldo atualizado do cliente após o pagamento já está correto, pois saldo é property!
         messages.success(
             self.request,
             f'Pagamento de R$ {self.object.valor:.2f} cadastrado com sucesso! '

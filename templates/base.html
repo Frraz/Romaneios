@@ -5,28 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Romaneio de Madeiras{% endblock %}</title>
-    
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <!-- CSS Principal -->
+    <!-- Seu CSS global -->
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" aria-label="Main navigation">
+
+    <!-- Navbar (Desktop) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-flex" aria-label="Main navigation">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'relatorios:dashboard' %}">
                 <i class="fas fa-tree"></i> Romaneio de Madeiras
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegação">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="collapse navbar-collapse show" id="navbarNavDesktop">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'relatorios:dashboard' %}">
@@ -34,7 +31,6 @@
                         </a>
                     </li>
                     {% if user.is_authenticated %}
-                    <!-- Cadastros e relatórios só para autenticados -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-database"></i> Cadastros
@@ -48,10 +44,14 @@
                             {% endif %}
                         </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'romaneio:romaneio_list' %}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-file-invoice"></i> Romaneios
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'romaneio:romaneio_list' %}">Romaneio Simples</a></li>
+                            <li><a class="dropdown-item" href="{% url 'romaneio:romaneio_detalhado_list' %}">Romaneio Detalhado</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'financeiro:pagamento_list' %}">
@@ -74,12 +74,10 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-user"></i> {{ user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            {#<li><a class="dropdown-item" href="#">Perfil</a></li>
-                            <li><hr class="dropdown-divider"></li>#}
                             <li>
                                 <a class="dropdown-item" href="{% url 'logout' %}?next={{ request.path }}">
                                     <i class="fas fa-sign-out-alt"></i> Sair
@@ -99,6 +97,97 @@
         </div>
     </nav>
 
+    <!-- Navbar & Offcanvas lateral (Mobile/Tablet) -->
+    <nav class="navbar navbar-dark bg-primary d-lg-none">
+        <div class="container-fluid">
+            <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-controls="mobileMenu" aria-label="Abrir menu">
+                <i class="fas fa-bars fa-lg"></i>
+            </button>
+            <a class="navbar-brand ms-2" href="{% url 'relatorios:dashboard' %}">
+                <i class="fas fa-tree"></i>
+            </a>
+            <span class="d-inline-block text-white fst-italic">Romaneio de Madeiras</span>
+            <div class="ms-auto">
+                {% if user.is_authenticated %}
+                <span class="me-2"><i class="fas fa-user"></i> {{ user.username }}</span>
+                <a href="{% url 'logout' %}?next={{ request.path }}" class="btn btn-outline-light btn-sm ms-2" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm ms-2" title="Entrar">
+                    <i class="fas fa-sign-in-alt"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+        <div class="offcanvas-header border-bottom pb-2">
+            <h5 class="offcanvas-title fw-bold" id="mobileMenuLabel">
+                <i class="fas fa-tree me-1"></i> Menu
+            </h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <ul class="navbar-nav flex-column gap-2 p-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'relatorios:dashboard' %}">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </li>
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#cadastrosMobileMenu" role="button" aria-expanded="false" aria-controls="cadastrosMobileMenu">
+                        <i class="fas fa-database me-2"></i> Cadastros
+                        <i class="fas fa-chevron-down ms-auto small text-muted"></i>
+                    </a>
+                    <div class="collapse ps-3" id="cadastrosMobileMenu">
+                        <ul class="navbar-nav flex-column mb-2">
+                            <li><a class="nav-link" href="{% url 'cadastros:cliente_list' %}">Clientes</a></li>
+                            <li><a class="nav-link" href="{% url 'cadastros:tipo_madeira_list' %}">Tipos de Madeira</a></li>
+                            <li><a class="nav-link" href="{% url 'cadastros:motorista_list' %}">Motoristas</a></li>
+                            {% if user.is_staff %}
+                            <li><a class="nav-link" href="{% url 'cadastros:usuario_list' %}">Operadores</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#romaneiosMobileMenu" role="button" aria-expanded="false" aria-controls="romaneiosMobileMenu">
+                        <i class="fas fa-file-invoice me-2"></i> Romaneios
+                        <i class="fas fa-chevron-down ms-auto small text-muted"></i>
+                    </a>
+                    <div class="collapse ps-3" id="romaneiosMobileMenu">
+                        <ul class="navbar-nav flex-column mb-2">
+                            <li><a class="nav-link" href="{% url 'romaneio:romaneio_list' %}">Romaneio Simples</a></li>
+                            <li><a class="nav-link" href="{% url 'romaneio:romaneio_detalhado_list' %}">Romaneio Detalhado</a></li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'financeiro:pagamento_list' %}">
+                        <i class="fas fa-money-bill-wave"></i> Pagamentos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#relatoriosMobileMenu" role="button" aria-expanded="false" aria-controls="relatoriosMobileMenu">
+                        <i class="fas fa-chart-bar me-2"></i> Relatórios
+                        <i class="fas fa-chevron-down ms-auto small text-muted"></i>
+                    </a>
+                    <div class="collapse ps-3" id="relatoriosMobileMenu">
+                        <ul class="navbar-nav flex-column mb-2">
+                            <li><a class="nav-link" href="{% url 'relatorios:ficha_romaneios' %}">Ficha de Romaneios</a></li>
+                            <li><a class="nav-link" href="{% url 'relatorios:ficha_madeiras' %}">Por Tipo de Madeira</a></li>
+                            <li><a class="nav-link" href="{% url 'relatorios:fluxo_financeiro' %}">Fluxo Financeiro</a></li>
+                            <li><a class="nav-link" href="{% url 'relatorios:saldo_clientes' %}">Saldo de Clientes</a></li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
     <!-- Sistema de mensagens Django -->
     {% if messages %}
     <div class="container mt-3">
@@ -111,14 +200,13 @@
     </div>
     {% endif %}
 
-    <!-- Conteúdo da página -->
     <main class="content-wrapper" tabindex="-1">
         <div class="container-fluid py-4">
             {% block content %}{% endblock %}
         </div>
     </main>
 
-    <!-- Rodapé -->
+    <!-- Rodapé, modal desenvolvedor e scripts -->
     <footer class="bg-light text-center py-3 mt-5 border-top">
         <div class="container">
             <p class="mb-0 text-muted">
@@ -137,81 +225,35 @@
         </div>
     </footer>
 
-    <!-- Modal de contato do desenvolvedor -->
     <dialog id="devInfoDialog" class="p-4 border rounded shadow" aria-modal="true">
         <h5>Contato do desenvolvedor</h5>
         <p class="text-muted">
             Precisa de suporte, melhorias ou novas funcionalidades?
         </p>
         <div class="d-flex flex-column gap-2">
-            <a class="btn btn-outline-primary btn-sm" 
-            href="https://portfolio.ferzion.com.br/" target="_blank" rel="noopener noreferrer">
-                <i class="fas fa-globe"></i> Portfólio
-            </a>
-            <a class="btn btn-outline-info btn-sm"
-               href="https://www.linkedin.com/in/warley-ferraz-almeida-280a55185/"
-               target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-linkedin"></i> LinkedIn
-            </a>
-            <a class="btn btn-outline-dark btn-sm"
-               href="https://github.com/Frraz"
-               target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-github"></i> GitHub
-            </a>
-            <a class="btn btn-outline-danger btn-sm"
-               href="https://www.instagram.com/ferraz.____/profilecard/?igsh=MW9keGQzNHFrMXBvOQ=="
-               target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-instagram"></i> Instagram
-            </a>
-            <a class="btn btn-outline-success btn-sm"
-               href="https://wa.me/5594992083253"
-               target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-whatsapp"></i> WhatsApp
-            </a>
-            <a class="btn btn-outline-secondary btn-sm"
-               href="tel:+559492083253">
-                <i class="fas fa-phone"></i> Telefone: +55 (94) 9 9208-3253
-            </a>
-            <a class="btn btn-outline-primary btn-sm"
-               href="mailto:warley.ferraz.wf@gmail.com">
-                <i class="fas fa-envelope"></i> E-mail
-            </a>
+            <a class="btn btn-outline-primary btn-sm" href="https://portfolio.ferzion.com.br/" target="_blank" rel="noopener noreferrer"><i class="fas fa-globe"></i> Portfólio</a>
+            <a class="btn btn-outline-info btn-sm" href="https://www.linkedin.com/in/warley-ferraz-almeida-280a55185/" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i> LinkedIn</a>
+            <a class="btn btn-outline-dark btn-sm" href="https://github.com/Frraz" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> GitHub</a>
+            <a class="btn btn-outline-danger btn-sm" href="https://www.instagram.com/ferraz.____/profilecard/?igsh=MW9keGQzNHFrMXBvOQ==" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i> Instagram</a>
+            <a class="btn btn-outline-success btn-sm" href="https://wa.me/5594992083253" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+            <a class="btn btn-outline-secondary btn-sm" href="tel:+559492083253"><i class="fas fa-phone"></i> Telefone: +55 (94) 9 9208-3253</a>
+            <a class="btn btn-outline-primary btn-sm" href="mailto:warley.ferraz.wf@gmail.com"><i class="fas fa-envelope"></i> E-mail</a>
         </div>
         <div class="mt-3 text-end">
-            <button id="devInfoClose" class="btn btn-secondary btn-sm">
-                Fechar
-            </button>
+            <button id="devInfoClose" class="btn btn-secondary btn-sm">Fechar</button>
         </div>
     </dialog>
-    <!-- Fallback para browsers antigos, se quiser -->
     <div id="devInfoDialogFallback" class="d-none"></div>
 
-    <!-- Scripts JS: jQuery, Bootstrap, Select2 -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         // Inicializar Select2
         $(function() {
-            $('.select2').select2({
-                theme: 'bootstrap-5',
-                width: '100%'
-            });
+            $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
         });
-
-        // Formatar valores monetários
-        function formatarMoeda(valor) {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency', currency: 'BRL'
-            }).format(valor);
-        }
-
-        // Confirmação de exclusão global
-        function confirmarExclusao(mensagem) {
-            return confirm(mensagem || 'Tem certeza que deseja excluir?');
-        }
-
-        // Modal dev info responsivo e compatível
+        // Modal dev info responsivo
         (function(){
             const link = document.getElementById('devInfoLink');
             const dialog = document.getElementById('devInfoDialog');
@@ -226,18 +268,11 @@
                 }
             }
             function closeDialog() {
-                if (dialog.open) {
-                    dialog.close();
-                }
+                if (dialog.open) { dialog.close(); }
                 document.getElementById('devInfoDialogFallback').classList.add('d-none');
             }
-            link.addEventListener('click', function(ev){
-                ev.preventDefault();
-                openDialog();
-            });
-            closeBtn.addEventListener('click', function(){
-                closeDialog();
-            });
+            link.addEventListener('click', function(ev){ ev.preventDefault(); openDialog(); });
+            closeBtn.addEventListener('click', function(){ closeDialog(); });
             dialog.addEventListener('click', function(event) {
                 const rect = dialog.getBoundingClientRect();
                 const isInDialog = (
@@ -246,9 +281,7 @@
                     event.clientY >= rect.top &&
                     event.clientY <= rect.bottom
                 );
-                if (!isInDialog) {
-                    closeDialog();
-                }
+                if (!isInDialog) { closeDialog(); }
             });
         })();
     </script>

@@ -16,10 +16,10 @@ class Cliente(models.Model):
     )
     cpf_cnpj = models.CharField(
         max_length=18,
-        blank=True,
-        null=True,
+        blank=False,
+        null=False,
         verbose_name="CPF/CNPJ"
-        # Pode adicionar um validador próprio aqui, ex: CPF/CNPJ
+        # O validador/no formato é garantido pelo forms.py!
     )
     telefone = models.CharField(
         max_length=20,
@@ -40,22 +40,20 @@ class Cliente(models.Model):
         return self.nome
 
     @property
-    def saldo_atual(self):
+    def saldo_atual(self) -> Decimal:
         """
-        Saldo = pagamentos - vendas
+        Saldo = pagamentos - vendas.
         Dinâmico, atualizado em tempo real. Negativo = cliente devendo.
         """
         from apps.romaneio.models import ItemRomaneio
         from apps.financeiro.models import Pagamento
 
-        # Vendas do cliente
         total_vendas = ItemRomaneio.objects.filter(
             romaneio__cliente=self
         ).aggregate(
             total=models.Sum('valor_total')
         )['total'] or Decimal('0.00')
 
-        # Pagamentos/adiantamentos
         total_pagamentos = Pagamento.objects.filter(
             cliente=self
         ).aggregate(
@@ -64,8 +62,8 @@ class Cliente(models.Model):
 
         return total_pagamentos - total_vendas
 
-    def atualizar_saldo(self):
-        """Método legado só para compatibilidade. Use saldo_atual."""
+    def atualizar_saldo(self) -> Decimal:
+        """Método legado só para compatibilidade. Prefira saldo_atual."""
         return self.saldo_atual
 
 
@@ -104,8 +102,8 @@ class TipoMadeira(models.Model):
     def __str__(self):
         return f"{self.nome} - Normal: R$ {self.preco_normal:.2f} | Com Frete: R$ {self.preco_com_frete:.2f}"
 
-    def get_preco(self, tipo_romaneio: str):
-        """Retorna o preço correto conforme o tipo."""
+    def get_preco(self, tipo_romaneio: str) -> Decimal:
+        """Retorna o preço correto conforme o tipo do romaneio."""
         if tipo_romaneio == 'COM_FRETE':
             return self.preco_com_frete
         return self.preco_normal
@@ -126,7 +124,7 @@ class Motorista(models.Model):
         blank=True,
         null=True,
         verbose_name="CPF"
-        # Adicione validador se desejar
+        # Se desejar, adicione validação de CPF no forms.py.
     )
     telefone = models.CharField(
         max_length=20,
@@ -149,5 +147,4 @@ class Motorista(models.Model):
         verbose_name_plural = "Motoristas"
 
     def __str__(self):
-        """Exibe nome e placa, se disponível."""
         return f"{self.nome}" + (f" ({self.placa_veiculo})" if self.placa_veiculo else "")

@@ -3,8 +3,19 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
-        <i class="fas fa-file-invoice"></i> Ficha de Romaneios
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <i class="fas fa-file-invoice"></i> Ficha de Romaneios
+        </span>
+        <!-- Botão exportar relatório -->
+        <form method="get" action="{% url 'relatorios:ficha_romaneios_export' %}" class="mb-0" target="_blank">
+            <input type="hidden" name="mes" value="{{ request.GET.mes|default:mes }}">
+            <input type="hidden" name="ano" value="{{ request.GET.ano|default:ano }}">
+            <input type="hidden" name="cliente" value="{{ request.GET.cliente }}">
+            <button class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-file-export"></i> Exportar relatório (.CSV)
+            </button>
+        </form>
     </div>
     <div class="card-body">
         <!-- Filtros por período e cliente -->
@@ -12,23 +23,23 @@
             <div class="col-md-2">
                 <label class="form-label">Mês</label>
                 <select name="mes" class="form-select">
-                    {% for m in "123456789012" %}
-                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>
-                        {{ forloop.counter }}
-                    </option>
+                    {% for m in meses %}
+                        <option value="{{ m }}"
+                            {% if m|stringformat:"s" == request.GET.mes|default:mes|stringformat:"s" %}selected{% endif %}>
+                            {{ m }}
+                        </option>
                     {% endfor %}
-                    {# Mais flexível: context['meses'] = range(1, 13) #}
                 </select>
             </div>
             <div class="col-md-2">
                 <label class="form-label">Ano</label>
                 <select name="ano" class="form-select">
-                    {% for i in "012" %}
-                        {% with ano_val=2024|add:forloop.counter0 %}
-                        <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>{{ ano_val }}</option>
-                        {% endwith %}
+                    {% for a in anos %}
+                        <option value="{{ a }}"
+                            {% if a|stringformat:"s" == request.GET.ano|default:ano|stringformat:"s" %}selected{% endif %}>
+                            {{ a }}
+                        </option>
                     {% endfor %}
-                    {# Melhor ainda: context['anos'] = [2024,2025,2026] #}
                 </select>
             </div>
             <div class="col-md-4">
@@ -36,9 +47,11 @@
                 <select name="cliente" class="form-select">
                     <option value="">Todos</option>
                     {% for cliente in clientes %}
-                        <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
-                            {{ cliente.nome }}
-                        </option>
+                        <option value="{{ cliente.id }}"
+                            {% if cliente.id|stringformat:"s" == request.GET.cliente %}
+                                selected
+                            {% endif %}
+                        >{{ cliente.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -88,17 +101,22 @@
                                 <span class="badge bg-warning text-dark">Com Frete</span>
                             {% endif %}
                         </td>
-                        <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
+                        <td class="text-end">
+                            {{ romaneio.m3_total|floatformat:3 }}
+                        </td>
                         <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted">Nenhum romaneio encontrado neste período.</td>
+                        <td colspan="7" class="text-center text-muted">
+                            Nenhum romaneio encontrado neste período/filtros.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {# Dica: para detalhar os itens de cada romaneio (espécie, comp, etc), só pedir! #}
     </div>
 </div>
 {% endblock %}

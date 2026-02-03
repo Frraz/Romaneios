@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}
-    {% if object %}Editar Romaneio{% else %}Novo Romaneio{% endif %}
+    {% if object %}Editar Romaneio Detalhado{% else %}Novo Romaneio Detalhado{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -38,16 +38,16 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>
                 <i class="fas fa-file-invoice"></i>
-                {% if object %}Editar Romaneio #{{ object.numero_romaneio }}{% else %}Novo Romaneio{% endif %}
+                {% if object %}Editar Romaneio Detalhado #{{ object.numero_romaneio }}{% else %}Novo Romaneio Detalhado{% endif %}
             </h1>
-            <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-secondary">
+            <a href="{% url 'romaneio:romaneio_detalhado_list' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Voltar
             </a>
         </div>
     </div>
 </div>
 
-<form method="post" id="romaneio-form" autocomplete="off">
+<form method="post" id="romaneio-detalhado-form" autocomplete="off">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -62,43 +62,50 @@
         <div class="col-md-8">
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fas fa-info-circle"></i> Dados do Romaneio
+                    <i class="fas fa-info-circle"></i> Dados do Romaneio Detalhado
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Nº Romaneio *</label>
                             {{ form.numero_romaneio }}
                             {% for err in form.numero_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
+                                <div class="text-danger small">{{ err }}</div>
                             {% endfor %}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Data *</label>
                             {{ form.data_romaneio }}
                             {% for err in form.data_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
+                                <div class="text-danger small">{{ err }}</div>
                             {% endfor %}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Tipo *</label>
                             {{ form.tipo_romaneio }}
                             {% for err in form.tipo_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Desconto (%)</label>
+                            {{ form.desconto }}
+                            {% for err in form.desconto.errors %}
+                                <div class="text-danger small">{{ err }}</div>
                             {% endfor %}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cliente *</label>
                             {{ form.cliente }}
                             {% for err in form.cliente.errors %}
-                            <div class="text-danger small">{{ err }}</div>
+                                <div class="text-danger small">{{ err }}</div>
                             {% endfor %}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Motorista</label>
                             {{ form.motorista }}
                             {% for err in form.motorista.errors %}
-                            <div class="text-danger small">{{ err }}</div>
+                                <div class="text-danger small">{{ err }}</div>
                             {% endfor %}
                         </div>
                     </div>
@@ -121,16 +128,16 @@
         </div>
     </div>
 
-    <!-- ITENS DO ROMANEIO -->
+    <!-- Itens Detalhados -->
     <div class="card mb-4">
         <div class="card-header">
-            <i class="fas fa-list"></i> Itens do Romaneio
+            <i class="fas fa-list"></i> Itens Detalhados do Romaneio
         </div>
         <div class="card-body">
             {% if formset.non_form_errors %}
             <div class="alert alert-danger mb-3">
                 {% for error in formset.non_form_errors %}
-                <div>{{ error }}</div>
+                    <div>{{ error }}</div>
                 {% endfor %}
             </div>
             {% endif %}
@@ -139,29 +146,51 @@
                 {% for form in formset %}
                 <div class="formset-row" data-formset-index="{{ forloop.counter0 }}">
                     {% if formset.can_delete %}
-                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)"
-                        aria-label="Remover item"><i class="fas fa-trash"></i>
+                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)" aria-label="Remover item">
+                        <i class="fas fa-trash"></i>
                     </button>
                     {% endif %}
                     <div class="row g-3">
-                        <div class="col-md-5">
+                        <div class="col-md-3">
                             <label class="form-label">Tipo de Madeira *</label>
                             {{ form.tipo_madeira }}
-                            {% for err in form.tipo_madeira.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            {% for err in form.tipo_madeira.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Quantidade (m³) *</label>
+                            <label class="form-label">Comprimento *</label>
+                            {{ form.comprimento }}
+                            {% for err in form.comprimento.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Rôdo *</label>
+                            {{ form.rodo }}
+                            {% for err in form.rodo.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Qtd. (m³) *</label>
                             {{ form.quantidade_m3 }}
-                            {% for err in form.quantidade_m3.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            {% for err in form.quantidade_m3.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">Valor Unit.</label>
+                            {{ form.valor_unitario }}
+                            {% for err in form.valor_unitario.errors %}
+                                <div class="text-danger small">{{ err }}</div>
+                            {% endfor %}
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Valor/m³</label>
-                            {{ form.valor_unitario }}
-                            {% for err in form.valor_unitario.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-3">
                             <label class="form-label">Total Item</label>
-                            <div class="valor-total-item" data-total-index="{{ forloop.counter0 }}">R$ 0,00</div>
+                            <div class="valor-total-item" data-total-index="{{ forloop.counter0 }}">
+                                R$ 0,00
+                            </div>
                         </div>
                         {% if formset.can_delete %}
                         <div class="d-none">{{ form.DELETE }}</div>
@@ -181,9 +210,9 @@
     <div class="row">
         <div class="col-12 d-flex flex-wrap gap-3">
             <button type="submit" class="btn btn-success btn-lg">
-                <i class="fas fa-save"></i> Salvar Romaneio
+                <i class="fas fa-save"></i> Salvar Romaneio Detalhado
             </button>
-            <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-secondary btn-lg">
+            <a href="{% url 'romaneio:romaneio_detalhado_list' %}" class="btn btn-secondary btn-lg">
                 <i class="fas fa-times"></i> Cancelar
             </a>
         </div>
@@ -193,16 +222,13 @@
 
 {% block extra_js %}
 <script>
-    const precosMadeiras = {{ tipos_madeira_json|safe }};
+    const precosMadeiras = {{ tipos_madeira_json|default:"{}"|safe }};
     function atualizarPreco(selectElement) {
         const row = $(selectElement).closest('.formset-row');
         const tipoMadeiraId = $(selectElement).val();
-        const tipoRomaneio = $('#id_tipo_romaneio').val();
         const inputValorUnitario = row.find('input[name$="valor_unitario"]');
         if (tipoMadeiraId && precosMadeiras[tipoMadeiraId]) {
-            const preco = tipoRomaneio === 'COM_FRETE'
-                ? precosMadeiras[tipoMadeiraId].com_frete
-                : precosMadeiras[tipoMadeiraId].normal;
+            const preco = precosMadeiras[tipoMadeiraId];
             inputValorUnitario.val(preco.toFixed(2));
             calcularTotal(inputValorUnitario[0]);
         }
@@ -219,7 +245,7 @@
     function calcularTotalGeral() {
         let totalGeral = 0;
         let totalM3 = 0;
-        $('.formset-row').each(function () {
+        $('.formset-row').each(function() {
             if (!$(this).find('input[name$="DELETE"]').is(':checked')) {
                 const quantidade = parseFloat($(this).find('input[name$="quantidade_m3"]').val()) || 0;
                 const valorUnitario = parseFloat($(this).find('input[name$="valor_unitario"]').val()) || 0;
@@ -236,19 +262,17 @@
         row.hide();
         calcularTotalGeral();
     }
-    $(document).on('change', '#id_tipo_romaneio', function () {
-        $('.tipo-madeira-select').each(function () {
-            atualizarPreco(this);
-        });
+    $(document).on('change', 'select[name$="tipo_madeira"]', function() {
+        atualizarPreco(this);
     });
-    $(document).on('change', 'input[name$="quantidade_m3"], input[name$="valor_unitario"]', function () {
+    $(document).on('change', 'input[name$="quantidade_m3"], input[name$="valor_unitario"]', function() {
         calcularTotal(this);
     });
-    $(document).ready(function () {
-        $('.tipo-madeira-select').each(function () {
+    $(document).ready(function() {
+        $('select[name$="tipo_madeira"]').each(function() {
             atualizarPreco(this);
         });
-        $('.formset-row').each(function () {
+        $('.formset-row').each(function() {
             calcularTotal($(this).find('input[name$="quantidade_m3"]')[0]);
         });
     });

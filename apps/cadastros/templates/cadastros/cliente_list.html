@@ -45,7 +45,7 @@
                         <th scope="col">CPF/CNPJ</th>
                         <th scope="col" class="text-end">Saldo</th>
                         <th scope="col">Situação</th>
-                        <th></th>
+                        <th scope="col" class="text-end"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -53,9 +53,13 @@
                     <tr>
                         <td>{{ cliente.nome }}</td>
                         <td>{{ cliente.telefone|default:"—" }}</td>
-                        <td>{{ cliente.cpf_cnpj|default:"—" }}</td>
-                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}">
-                            R$ {{ cliente.saldo_atual|floatformat:2 }}
+                        <td>
+                            <span class="input-cpf-cnpj" style="font-family: monospace;" title="CPF ou CNPJ">
+                                {{ cliente.cpf_cnpj|default:"—" }}
+                            </span>
+                        </td>
+                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}" title="Saldo atual">
+                            R$ {{ cliente.saldo_atual|default:"0.00"|floatformat:2 }}
                         </td>
                         <td>
                             {% if cliente.saldo_atual < 0 %}
@@ -70,7 +74,8 @@
                             <a href="{% url 'cadastros:cliente_update' cliente.id %}" class="btn btn-sm btn-primary" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="{% url 'cadastros:cliente_delete' cliente.id %}" class="btn btn-sm btn-danger" title="Excluir" onclick="return confirmarExclusao();">
+                            <a href="{% url 'cadastros:cliente_delete' cliente.id %}" class="btn btn-sm btn-danger" title="Excluir" 
+                               onclick="return confirm('Tem certeza que deseja excluir este cliente?');">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </td>

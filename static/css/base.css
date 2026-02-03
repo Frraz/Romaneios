@@ -28,6 +28,33 @@ body {
     letter-spacing: 0.02em;
 }
 
+/* ===== OFFCANVAS CUSTOMIZADO MOBILE/TABLET ===== */
+@media (max-width: 991.98px) {
+    .offcanvas-start {
+        width: 80vw !important;
+        max-width: 270px !important;
+        border-radius: 0 14px 14px 0;
+        background: #f8fafb;
+        border-right: 1.5px solid #dee2e6;
+        box-shadow: 1px 0 12px 0 rgba(0,0,0,0.09);
+    }
+    .offcanvas-backdrop.show {
+        opacity: 0.41;
+    }
+}
+.offcanvas .navbar-nav .nav-link {
+    font-size: 1.12rem;
+    margin-bottom: 2px;
+    color: #232323 !important;
+}
+.offcanvas .navbar-nav .nav-link.active,
+.offcanvas .navbar-nav .nav-link:focus,
+.offcanvas .navbar-nav .nav-link:hover {
+    background: #ecf1fa;
+    color: #083665 !important;
+    font-weight: 600;
+}
+
 /* ========== CONTEÚDO CENTRAL ========== */
 .content-wrapper {
     min-height: calc(100vh - 110px);

@@ -8,7 +8,7 @@
         {% if object %}Editar{% else %}Novo{% endif %} Tipo de Madeira
     </div>
     <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" novalidate autocomplete="off">
             {% csrf_token %}
             {% if form.non_field_errors %}
                 <div class="alert alert-danger mb-3">
@@ -18,29 +18,38 @@
                 </div>
             {% endif %}
             <div class="mb-3">
-                {{ form.nome.label_tag }}
+                <label for="{{ form.nome.id_for_label }}" class="form-label">Nome *</label>
                 {{ form.nome }}
+                <small class="form-text text-muted">Ex: CASCA SECA, ANGICO, MIXTA</small>
                 {% if form.nome.errors %}
                     <div class="text-danger small mt-1">
-                        {% for error in form.nome.errors %}<div>{{ error }}</div>{% endfor %}
+                        {% for error in form.nome.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
                     </div>
                 {% endif %}
             </div>
             <div class="mb-3">
-                {{ form.preco_normal.label_tag }}
+                <label for="{{ form.preco_normal.id_for_label }}" class="form-label">Preço Normal (R$ / m³) *</label>
                 {{ form.preco_normal }}
+                <small class="form-text text-muted">Ex: 460.00</small>
                 {% if form.preco_normal.errors %}
                     <div class="text-danger small mt-1">
-                        {% for error in form.preco_normal.errors %}<div>{{ error }}</div>{% endfor %}
+                        {% for error in form.preco_normal.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
                     </div>
                 {% endif %}
             </div>
             <div class="mb-3">
-                {{ form.preco_com_frete.label_tag }}
+                <label for="{{ form.preco_com_frete.id_for_label }}" class="form-label">Preço com Frete (R$ / m³) *</label>
                 {{ form.preco_com_frete }}
+                <small class="form-text text-muted">Ex: 330.00</small>
                 {% if form.preco_com_frete.errors %}
                     <div class="text-danger small mt-1">
-                        {% for error in form.preco_com_frete.errors %}<div>{{ error }}</div>{% endfor %}
+                        {% for error in form.preco_com_frete.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
                     </div>
                 {% endif %}
             </div>
@@ -49,7 +58,9 @@
                 {{ form.ativo.label_tag }}
                 {% if form.ativo.errors %}
                     <div class="text-danger small mt-1">
-                        {% for error in form.ativo.errors %}<div>{{ error }}</div>{% endfor %}
+                        {% for error in form.ativo.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
                     </div>
                 {% endif %}
             </div>

@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.utils import timezone
 from decimal import Decimal
 from apps.cadastros.models import Cliente
 
@@ -66,10 +67,10 @@ class Pagamento(models.Model):
     def clean(self):
         if self.valor <= 0:
             raise ValidationError('O valor do pagamento deve ser positivo.')
-
-        if self.data_pagamento > models.functions.Now():
+        # Corrigido: comparar data do pagamento com a data de hoje
+        if self.data_pagamento > timezone.now().date():
             raise ValidationError('A data do pagamento não pode ser no futuro.')
 
     def save(self, *args, **kwargs):
-        self.full_clean()  # Garante que clean() seja chamado ao salvar pelo shell ou script
+        self.full_clean()
         super().save(*args, **kwargs)

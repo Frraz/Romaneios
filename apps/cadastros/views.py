@@ -18,25 +18,27 @@ class ClienteListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         busca = self.request.GET.get('q')
+        queryset = Cliente.objects.all()
         if busca:
             queryset = queryset.filter(nome__icontains=busca)
+        # Calcula saldo na view para garantir filtragem por saldo dinâmico
+        clientes = list(queryset)
         filtro_saldo = self.request.GET.get('saldo')
         if filtro_saldo == 'negativos':
-            queryset = [c for c in queryset if c.saldo_atual < 0]
+            clientes = [c for c in clientes if c.saldo_atual < 0]
         elif filtro_saldo == 'positivos':
-            queryset = [c for c in queryset if c.saldo_atual > 0]
+            clientes = [c for c in clientes if c.saldo_atual > 0]
         elif filtro_saldo == 'zerados':
-            queryset = [c for c in queryset if c.saldo_atual == 0]
+            clientes = [c for c in clientes if c.saldo_atual == 0]
         ordenar = self.request.GET.get('ordenar', 'nome')
         if ordenar == 'saldo':
-            queryset = sorted(queryset, key=lambda c: c.saldo_atual)
+            clientes = sorted(clientes, key=lambda c: c.saldo_atual)
         elif ordenar == 'saldo_desc':
-            queryset = sorted(queryset, key=lambda c: c.saldo_atual, reverse=True)
+            clientes = sorted(clientes, key=lambda c: c.saldo_atual, reverse=True)
         else:
-            queryset = sorted(queryset, key=lambda c: c.nome.lower())
-        return queryset
+            clientes = sorted(clientes, key=lambda c: c.nome.lower())
+        return clientes
 
 class ClienteCreateView(LoginRequiredMixin, CreateView):
     model = Cliente
@@ -80,6 +82,8 @@ class TipoMadeiraListView(LoginRequiredMixin, ListView):
         busca = self.request.GET.get('q')
         if busca:
             queryset = queryset.filter(nome__icontains=busca)
+        # Se em algum dia quiser filtrar apenas "ativos":
+        # queryset = queryset.filter(ativo=True)
         return queryset
 
 class TipoMadeiraCreateView(LoginRequiredMixin, CreateView):
@@ -108,7 +112,7 @@ class TipoMadeiraDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('cadastros:tipo_madeira_list')
 
     def delete(self, request, *args, **kwargs):
-        messages.success(self.request, 'Tipo de madeira excluída com sucesso!')
+        messages.success(self.request, 'Tipo de madeira excluído com sucesso!')
         return super().delete(request, *args, **kwargs)
 
 # ========== MOTORISTAS ==========
@@ -148,19 +152,17 @@ class MotoristaDeleteView(LoginRequiredMixin, DeleteView):
         messages.success(self.request, 'Motorista excluído com sucesso!')
         return super().delete(request, *args, **kwargs)
 
-# ========== USUÁRIOS / OPERADORES (apenas staff e superuser) ==========
+# ========== USUÁRIOS / OPERADORES ==========
 
 class StaffRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.is_staff  # staff e superuser podem acessar
+        return self.request.user.is_staff
 
-# Form para operadores comuns (não edita is_superuser)
 class UserStaffForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'is_active', 'is_staff']
 
-# Form para superusers (pode editar tudo)
 class UserSuperForm(forms.ModelForm):
     class Meta:
         model = User
@@ -192,7 +194,6 @@ class UsuarioCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
     success_url = reverse_lazy('cadastros:usuario_list')
 
     def get_form_class(self):
-        # Só superuser pode criar outros superusers
         if self.request.user.is_superuser:
             return UserSuperForm
         return UserStaffForm
