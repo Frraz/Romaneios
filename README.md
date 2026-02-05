@@ -1,125 +1,209 @@
 # Sistema de Romaneio de Madeiras
 
-Sistema web em **Django + PostgreSQL** para gestão de vendas de madeiras e controle fácil de clientes, saldos, recebimentos e relatórios, substituindo planilhas Excel por uma solução eficiente, automatizada e segura.
+Sistema web em **Django + PostgreSQL** para gestão de vendas de madeira e controle de clientes, saldos, recebimentos e relatórios. O objetivo é substituir planilhas por uma solução **centralizada, rastreável e segura**.
 
 ---
 
-## 📌 Sobre o sistema
+## Visão geral
 
-- Controle de vendas de madeira em metros cúbicos (m³)
-- Gestão de clientes, motoristas, tipos de madeira e operadores
-- Geração automática de **romaneios** e **adiantamentos** (pagamentos)
-- Cálculo automático do saldo de cada cliente (dívida ou crédito)
-- Painel com os principais indicadores do mês
-- Relatórios mensais detalhados com filtros
+**Principais recursos:**
+- Cadastro e gestão de **Clientes**, **Motoristas**, **Tipos de Madeira** e **Operadores**
+- Registro de **Romaneios (vendas)** com cálculo automático de totais
+- Registro de **Pagamentos/Adiantamentos** vinculados ao cliente
+- **Saldo automático por cliente** (dívida, zerado ou crédito)
+- **Dashboard** com indicadores do mês
+- **Relatórios** com filtros (mês/ano/cliente)
+- Autenticação com **login/logout** e **recuperação de senha por e-mail**
 
 ---
 
-## 📂 Estrutura funcional
+## Regras de negócio (resumo)
 
-### 1️⃣ **Dashboard**
-- Tela inicial com resumo mensal:
-  - Total vendido (m³)
-  - Faturamento total
-  - Saldo a receber
-  - Qtd. de romaneios/vendas no mês
+- **Venda (romaneio)** aumenta o valor devido pelo cliente  
+- **Pagamento** reduz o valor devido  
+- **Saldo do cliente**:
+  - **Negativo** → cliente está devendo
+  - **Zero** → quitado
+  - **Positivo** → crédito
 
-### 2️⃣ **Cadastros**
-CRUD para:
+> O saldo é **calculado automaticamente** com base no histórico (vendas e pagamentos).  
+> Não existe ajuste manual de saldo para garantir rastreabilidade.
+
+---
+
+## Módulos do sistema
+
+### 1) Dashboard
+Resumo mensal com indicadores como:
+- Total vendido (m³)
+- Faturamento total
+- Saldo a receber
+- Quantidade de romaneios no mês
+
+### 2) Cadastros
+CRUD de:
 - Clientes
 - Tipos de Madeira
 - Motoristas
 - Operadores (usuários do sistema)
 
-### 3️⃣ **Romaneio (Vendas)**
-- Registro detalhado de vendas, com:
-  - Data e Nº do Romaneio
-  - Cliente, Tipo de Madeira, Motorista
-  - Quantidade em m³
-  - Tipo de venda (Normal / Com frete)
-  - Preço unitário sugerido automaticamente
-  - Total calculado
-- **Regra:** Salva venda → saldo do cliente diminui (fica negativo/mais negativo)
+### 3) Romaneios (Vendas)
+Cadastro de romaneios com:
+- Data e número
+- Cliente, tipo de madeira, motorista
+- Quantidade (m³)
+- Tipo de venda (normal / com frete)
+- Preço unitário sugerido (quando aplicável)
+- Total calculado automaticamente
 
-### 4️⃣ **Adiantamentos (Gestão de Pagamentos)**
-- Registro de pagamentos por cliente, com:
-  - Data, Cliente, Valor, Descrição
-- **Regra:** Pagamento recebido abate do saldo devedor. Saldo pode zerar ou ficar positivo (crédito para compras futuras).
+### 4) Pagamentos (Adiantamentos)
+Registro de recebimentos por cliente com:
+- Data, cliente, valor e descrição
+- Impacto automático no saldo do cliente
 
-### 5️⃣ **Relatórios mensais**
-- **Ficha de Romaneios:** vendas no período
-- **Ficha por Tipo de Madeira:** total por espécie/tipo
-- **Fluxo Financeiro:** extrato de entradas (pagamentos) e saídas (romaneios)
-- **Saldo de Clientes:** situação de cada cliente (devedor/credor)
-- Todos com filtros por mês, ano e cliente.
+### 5) Relatórios
+- Ficha de Romaneios
+- Por Tipo de Madeira
+- Fluxo Financeiro
+- Saldo de Clientes
 
 ---
 
-## 📊 Lógica e Regras de Negócio
+## Stack
 
-- **Saldo do Cliente**:  
-  - Toda venda = saldo negativo (deve)
-  - Todo pagamento = reduz saldo negativo
-  - Cliente pode ter saldo:  
-    - Negativo (devendo)  
-    - Zerado  
-    - Positivo (crédito)
-- Saldo **sempre calculado automaticamente**, nunca ajustado manualmente.
-- Relatórios garantem rastreabilidade total dos negócios.
+- **Python:** 3.10+ (recomendado 3.11+)
+- **Django:** 4.2+
+- **PostgreSQL**
+- Templates com **Bootstrap 5**
+- Views com **Class-Based Views (CBVs)**
 
 ---
 
-## 🛠️ Stack e Boas Práticas
+## Estrutura do projeto
 
-- **Backend:** Python 3.10+, Django 4.x
-- **Banco:** PostgreSQL
-- **Arquitetura por apps:**
-  - `cadastros`, `romaneio`, `financeiro`, `relatorios`
-- ORM e migrations Django
-- Views baseadas em classes (CBV)
-- Templates responsivos (Bootstrap 5)
-- Uso opcional do **Django Admin**
-- Código limpo, com docstrings e validado por PEP8
+- `apps/cadastros` — clientes, motoristas, tipos, operadores
+- `apps/romaneio` — vendas/romaneios
+- `apps/financeiro` — pagamentos
+- `apps/relatorios` — dashboard e relatórios
+- `apps/core` — utilitários e autenticação custom (ex.: password reset)
+- `templates/` — templates globais (base e auth)
+- `static/` — CSS e assets
 
 ---
 
-## 📦 Recursos da entrega
+## Pré-requisitos
 
-- Modelos Django completos (`Cliente`, `TipoMadeira`, `Motorista`, `Romaneio`, `ItemRomaneio`, `Pagamento`)
-- Relacionamentos corretos (chaves estrangeiras, ligando vendas e pagamentos ao cliente)
-- Lógica de saldo e validação nas views e models
-- Estrutura organizada para fácil expansão futura
-- Exemplos de código disponíveis nos diretórios dos apps
-- Instalação simples e documentação para uso e manutenção do sistema
+- Python 3.10+
+- PostgreSQL
+- (Opcional) Docker
+- (Produção) Servidor SMTP (ex.: Gmail com senha de app) e Nginx com HTTPS
 
 ---
 
-## 🚀 Instalação rápida
+## Instalação (desenvolvimento)
 
 ```sh
 git clone https://github.com/seu-usuario/seu-repo-romaneio.git
 cd seu-repo-romaneio
+
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
 pip install -r requirements.txt
-# Configure DATABASES no settings.py para seu Postgres
+
+# Crie e configure o .env
+# (veja o exemplo abaixo)
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
-Acesse: http://localhost:8000
+
+Acesse:
+- http://127.0.0.1:8000/
 
 ---
 
-## 🧑‍💻 Para Desenvolvedores
+## Configuração do .env (exemplo)
 
-- Siga a separação de apps e use sempre o ORM.
-- **Nunca atualize o saldo manualmente:** ele é derivado do histórico de vendas e pagamentos.
-- Novos relatórios? Siga o padrão dos existentes em `apps/relatorios/views.py`.
-- Testes: use `python manage.py test`.
+Crie um arquivo `.env` na raiz do projeto:
+
+```env
+SECRET_KEY=sua-chave-super-segura
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+
+DB_NAME=madereira_jd
+DB_USER=parica
+DB_PASSWORD=senha
+DB_HOST=localhost
+DB_PORT=5433
+
+# Email (desenvolvimento: console backend; produção: SMTP)
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+DEFAULT_FROM_EMAIL="Romaneio de Madeiras <no-reply@localhost>"
+
+# Links de recuperação de senha
+SITE_DOMAIN=127.0.0.1:8000
+SITE_PROTOCOL=http
+```
+
+> Em produção, use `DEBUG=False`, configure `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e SMTP real.
 
 ---
 
-## 📄 Licença
+## Recuperação de senha por e-mail
 
-Projeto livre para uso acadêmico e comercial. Veja o arquivo LICENSE para detalhes.
+O sistema utiliza o fluxo padrão do Django com templates customizados em:
+- `templates/registration/password_reset_form.html`
+- `templates/registration/password_reset_done.html`
+- `templates/registration/password_reset_confirm.html`
+- `templates/registration/password_reset_complete.html`
+- `templates/registration/password_reset_email.html`
+- `templates/registration/password_reset_subject.txt`
+
+Requisito: o usuário precisa ter **e-mail cadastrado** no perfil.
+
+---
+
+## Deploy (produção) - checklist rápido
+
+1. Ajustar `.env`:
+   - `DEBUG=False`
+   - `ALLOWED_HOSTS=madereirajd.ferzion.com.br,...`
+   - `CSRF_TRUSTED_ORIGINS=https://madereirajd.ferzion.com.br,...`
+   - `SITE_DOMAIN=madereirajd.ferzion.com.br`
+   - `SITE_PROTOCOL=https`
+   - SMTP configurado (Gmail: **senha de app**)
+
+2. Coletar estáticos:
+```sh
+python manage.py collectstatic --noinput
+```
+
+3. Rodar check de segurança:
+```sh
+python manage.py check --deploy
+```
+
+4. Nginx com HTTPS e headers:
+- `X-Forwarded-Proto`
+- `X-Real-IP`
+- `X-Forwarded-For`
+
+---
+
+## Contribuição (padrões)
+
+- Use ORM e siga a separação por apps
+- Evite “saldo manual”: saldo sempre derivado de vendas e pagamentos
+- Relatórios novos: siga o padrão em `apps/relatorios/`
+- Para rodar testes:
+```sh
+python manage.py test
+```
+
+---
+
+## Licença
+
+Projeto livre para uso acadêmico e comercial. Veja o arquivo `LICENSE` para detalhes.
