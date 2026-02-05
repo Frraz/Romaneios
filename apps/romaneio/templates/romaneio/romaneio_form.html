@@ -12,13 +12,17 @@
         background: #f8f9fa;
         border-radius: 8px;
         position: relative;
+        transition: box-shadow .2s;
     }
+    .formset-row:hover { box-shadow: 0 0 5px #aaa; }
+
     .delete-row {
         position: absolute;
         top: 10px;
         right: 10px;
         z-index: 2;
     }
+
     .valor-total-item {
         font-size: 1.2rem;
         font-weight: bold;
@@ -29,6 +33,12 @@
         font-weight: bold;
         color: var(--primary-color);
     }
+
+    #empty-form-row { display: none; }
+
+    /* Campos somente do detalhado */
+    .detalhado-only { display: none; }
+    body.modo-detalhado .detalhado-only { display: block; }
 </style>
 {% endblock %}
 
@@ -52,9 +62,7 @@
 
     {% if form.non_field_errors %}
     <div class="alert alert-danger mb-3">
-        {% for error in form.non_field_errors %}
-        <div>{{ error }}</div>
-        {% endfor %}
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}
 
@@ -66,55 +74,69 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Nº Romaneio *</label>
                             {{ form.numero_romaneio }}
-                            {% for err in form.numero_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
-                            {% endfor %}
+                            {% for err in form.numero_romaneio.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
-                        <div class="col-md-4">
+
+                        <div class="col-md-3">
                             <label class="form-label">Data *</label>
-                            {{ form.data_romaneio }}
-                            {% for err in form.data_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
-                            {% endfor %}
+                            <input type="date" name="{{ form.data_romaneio.name }}"
+                                   class="form-control"
+                                   id="id_data_romaneio"
+                                   value="{{ form.data_romaneio.value|date:'Y-m-d' }}"
+                                   required>
+                            {% for err in form.data_romaneio.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
-                        <div class="col-md-4">
+
+                        <div class="col-md-3">
                             <label class="form-label">Tipo *</label>
                             {{ form.tipo_romaneio }}
-                            {% for err in form.tipo_romaneio.errors %}
-                            <div class="text-danger small">{{ err }}</div>
-                            {% endfor %}
+                            {% for err in form.tipo_romaneio.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Modalidade *</label>
+                            {{ form.modalidade }}
+                            {% for err in form.modalidade.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Cliente *</label>
                             {{ form.cliente }}
-                            {% for err in form.cliente.errors %}
-                            <div class="text-danger small">{{ err }}</div>
-                            {% endfor %}
+                            {% for err in form.cliente.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Motorista</label>
                             {{ form.motorista }}
-                            {% for err in form.motorista.errors %}
-                            <div class="text-danger small">{{ err }}</div>
-                            {% endfor %}
+                            {% for err in form.motorista.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Desconto (%)</label>
+                            {{ form.desconto }}
+                            {% for err in form.desconto.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            <div class="form-text">Aplicado sobre o valor bruto (soma dos itens).</div>
+                        </div>
+
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="col-md-4">
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
                     <i class="fas fa-calculator"></i> Resumo
                 </div>
                 <div class="card-body text-center">
-                    <p class="mb-2">Total do Romaneio:</p>
+                    <p class="mb-2">Total do Romaneio (líquido):</p>
                     <p id="total-geral">R$ 0,00</p>
                     <hr>
                     <p class="mb-1 small text-muted">Total m³: <span id="total-m3">0.000</span></p>
+                    <p class="mb-1 small text-muted">Total bruto: <span id="total-bruto">R$ 0,00</span></p>
                     <p class="text-secondary small">* Preenchimento obrigatório</p>
                 </div>
             </div>
@@ -129,49 +151,116 @@
         <div class="card-body">
             {% if formset.non_form_errors %}
             <div class="alert alert-danger mb-3">
-                {% for error in formset.non_form_errors %}
-                <div>{{ error }}</div>
-                {% endfor %}
+                {% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
             </div>
             {% endif %}
+
             {{ formset.management_form }}
+
             <div id="formset-container">
-                {% for form in formset %}
+                {% for f in formset %}
                 <div class="formset-row" data-formset-index="{{ forloop.counter0 }}">
                     {% if formset.can_delete %}
-                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)"
-                        aria-label="Remover item"><i class="fas fa-trash"></i>
+                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)" aria-label="Remover item">
+                        <i class="fas fa-trash"></i>
                     </button>
                     {% endif %}
-                    <div class="row g-3">
-                        <div class="col-md-5">
+
+                    <div class="row g-3 align-items-end">
+
+                        <div class="col-md-4">
                             <label class="form-label">Tipo de Madeira *</label>
-                            {{ form.tipo_madeira }}
-                            {% for err in form.tipo_madeira.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            {{ f.tipo_madeira }}
+                            {% for err in f.tipo_madeira.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
+
+                        <div class="col-md-2 detalhado-only">
+                            <label class="form-label">Comprimento *</label>
+                            {{ f.comprimento }}
+                            {% for err in f.comprimento.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                        </div>
+
+                        <div class="col-md-2 detalhado-only">
+                            <label class="form-label">Rôdo *</label>
+                            {{ f.rodo }}
+                            {% for err in f.rodo.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                        </div>
+
                         <div class="col-md-2">
                             <label class="form-label">Quantidade (m³) *</label>
-                            {{ form.quantidade_m3 }}
-                            {% for err in form.quantidade_m3.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            {{ f.quantidade_m3 }}
+                            {% for err in f.quantidade_m3.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
+
                         <div class="col-md-2">
                             <label class="form-label">Valor/m³</label>
-                            {{ form.valor_unitario }}
-                            {% for err in form.valor_unitario.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+                            {{ f.valor_unitario }}
+                            {% for err in f.valor_unitario.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
                         </div>
-                        <div class="col-md-3">
+
+                        <div class="col-md-2">
                             <label class="form-label">Total Item</label>
                             <div class="valor-total-item" data-total-index="{{ forloop.counter0 }}">R$ 0,00</div>
                         </div>
+
                         {% if formset.can_delete %}
-                        <div class="d-none">{{ form.DELETE }}</div>
+                        <div class="d-none">{{ f.DELETE }}</div>
                         {% endif %}
-                        {{ form.id }}
+                        {{ f.id }}
                     </div>
                 </div>
                 {% endfor %}
             </div>
-            <button type="button" class="btn btn-outline-primary mt-3" onclick="adicionarLinha()">
+
+            <!-- Empty form (layout idêntico) -->
+            <div id="empty-form-row">
+                <div class="formset-row" data-formset-index="__prefix__">
+                    {% if formset.can_delete %}
+                    <button type="button" class="btn btn-sm btn-danger delete-row" onclick="removerLinha(this)" aria-label="Remover item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    {% endif %}
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo de Madeira *</label>
+                            {{ formset.empty_form.tipo_madeira }}
+                        </div>
+
+                        <div class="col-md-2 detalhado-only">
+                            <label class="form-label">Comprimento *</label>
+                            {{ formset.empty_form.comprimento }}
+                        </div>
+
+                        <div class="col-md-2 detalhado-only">
+                            <label class="form-label">Rôdo *</label>
+                            {{ formset.empty_form.rodo }}
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Quantidade (m³) *</label>
+                            {{ formset.empty_form.quantidade_m3 }}
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Valor/m³</label>
+                            {{ formset.empty_form.valor_unitario }}
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Total Item</label>
+                            <div class="valor-total-item" data-total-index="__prefix__">R$ 0,00</div>
+                        </div>
+
+                        {% if formset.can_delete %}
+                        <div class="d-none">{{ formset.empty_form.DELETE }}</div>
+                        {% endif %}
+                        {{ formset.empty_form.id }}
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-outline-primary mt-3" id="add-item-btn">
                 <i class="fas fa-plus"></i> Adicionar Item
             </button>
         </div>
@@ -194,11 +283,22 @@
 {% block extra_js %}
 <script>
     const precosMadeiras = {{ tipos_madeira_json|safe }};
+
+    function setModoDetalhadoUI() {
+        const modalidade = $('#id_modalidade').val();
+        if (modalidade === 'DETALHADO') {
+            document.body.classList.add('modo-detalhado');
+        } else {
+            document.body.classList.remove('modo-detalhado');
+        }
+    }
+
     function atualizarPreco(selectElement) {
         const row = $(selectElement).closest('.formset-row');
         const tipoMadeiraId = $(selectElement).val();
         const tipoRomaneio = $('#id_tipo_romaneio').val();
         const inputValorUnitario = row.find('input[name$="valor_unitario"]');
+
         if (tipoMadeiraId && precosMadeiras[tipoMadeiraId]) {
             const preco = tipoRomaneio === 'COM_FRETE'
                 ? precosMadeiras[tipoMadeiraId].com_frete
@@ -207,50 +307,89 @@
             calcularTotal(inputValorUnitario[0]);
         }
     }
+
     function calcularTotal(inputElement) {
         const row = $(inputElement).closest('.formset-row');
         const quantidade = parseFloat(row.find('input[name$="quantidade_m3"]').val()) || 0;
         const valorUnitario = parseFloat(row.find('input[name$="valor_unitario"]').val()) || 0;
+
         const total = quantidade * valorUnitario;
         const index = row.data('formset-index');
+
         $(`[data-total-index="${index}"]`).text(`R$ ${total.toFixed(2)}`);
         calcularTotalGeral();
     }
+
     function calcularTotalGeral() {
-        let totalGeral = 0;
+        let bruto = 0;
         let totalM3 = 0;
+
         $('.formset-row').each(function () {
             if (!$(this).find('input[name$="DELETE"]').is(':checked')) {
                 const quantidade = parseFloat($(this).find('input[name$="quantidade_m3"]').val()) || 0;
                 const valorUnitario = parseFloat($(this).find('input[name$="valor_unitario"]').val()) || 0;
-                totalGeral += quantidade * valorUnitario;
+                bruto += quantidade * valorUnitario;
                 totalM3 += quantidade;
             }
         });
-        $('#total-geral').text(`R$ ${totalGeral.toFixed(2)}`);
+
+        const desconto = parseFloat($('#id_desconto').val()) || 0;
+        const liquido = bruto * (1 - (desconto / 100));
+
+        $('#total-bruto').text(`R$ ${bruto.toFixed(2)}`);
+        $('#total-geral').text(`R$ ${liquido.toFixed(2)}`);
         $('#total-m3').text(totalM3.toFixed(3));
     }
+
     function removerLinha(button) {
         const row = $(button).closest('.formset-row');
         row.find('input[name$="DELETE"]').prop('checked', true);
         row.hide();
         calcularTotalGeral();
     }
-    $(document).on('change', '#id_tipo_romaneio', function () {
-        $('.tipo-madeira-select').each(function () {
-            atualizarPreco(this);
-        });
+
+    $(document).on('click', '#add-item-btn', function () {
+        var totalForms = $('#id_{{ formset.prefix }}-TOTAL_FORMS');
+        var current = parseInt(totalForms.val());
+        var emptyFormHtml = $('#empty-form-row').html().replace(/__prefix__/g, current);
+
+        $('#formset-container').append(emptyFormHtml);
+        totalForms.val(current + 1);
+
+        // Atualiza UI do modo (para campos detalhados aparecerem na nova linha se necessário)
+        setModoDetalhadoUI();
     });
+
+    $(document).on('change', '#id_tipo_romaneio', function () {
+        $('.tipo-madeira-select').each(function () { atualizarPreco(this); });
+        calcularTotalGeral();
+    });
+
+    $(document).on('change', '#id_modalidade', function () {
+        setModoDetalhadoUI();
+    });
+
+    $(document).on('change', '#id_desconto', function () {
+        calcularTotalGeral();
+    });
+
     $(document).on('change', 'input[name$="quantidade_m3"], input[name$="valor_unitario"]', function () {
         calcularTotal(this);
     });
+
     $(document).ready(function () {
+        setModoDetalhadoUI();
+
         $('.tipo-madeira-select').each(function () {
             atualizarPreco(this);
         });
+
         $('.formset-row').each(function () {
-            calcularTotal($(this).find('input[name$="quantidade_m3"]')[0]);
+            const qtyInput = $(this).find('input[name$="quantidade_m3"]')[0];
+            if (qtyInput) calcularTotal(qtyInput);
         });
+
+        calcularTotalGeral();
     });
 </script>
 {% endblock %}

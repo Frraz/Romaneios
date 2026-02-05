@@ -34,34 +34,41 @@
         </thead>
         <tbody>
             {% for usuario in usuarios %}
-            <tr {% if usuario.is_superuser %}class="table-light"{% endif %}>
-                <td>{{ usuario.username }}</td>
+            <tr {% if usuario.is_superuser %}class="table-light border border-2 border-dark"{% endif %}>
+                <td>
+                    {{ usuario.username }}
+                    {% if usuario.is_superuser %}
+                        <span class="ms-1" title="SuperUsuário">
+                            <i class="fas fa-crown text-warning"></i>
+                        </span>
+                    {% endif %}
+                </td>
                 <td>{{ usuario.get_full_name }}</td>
                 <td>{{ usuario.email }}</td>
                 <td>
                     {% if usuario.is_active %}
-                        <span class="badge bg-success">Sim</span>
+                        <span class="badge bg-success" title="Usuário ativo">Sim</span>
                     {% else %}
-                        <span class="badge bg-danger">Não</span>
+                        <span class="badge bg-danger" title="Usuário desativado">Não</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if usuario.is_staff %}
-                        <span class="badge bg-primary">Sim</span>
+                        <span class="badge bg-primary" title="Operador (staff)">Sim</span>
                     {% else %}
-                        <span class="badge bg-secondary">Não</span>
+                        <span class="badge bg-secondary" title="Não é operador">Não</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if usuario.is_superuser %}
-                        <span class="badge bg-dark">Sim</span>
+                        <span class="badge bg-dark" title="Administrador Geral">Sim</span>
                     {% else %}
-                        <span class="badge bg-secondary">Não</span>
+                        <span class="badge bg-secondary" title="Não é superuser">Não</span>
                     {% endif %}
                 </td>
                 <td class="text-center">
                     {% if user.is_staff and user.pk != usuario.pk %}
-                    <a class="btn btn-warning btn-sm" href="{% url 'cadastros:usuario_edit' usuario.pk %}" title="Editar usuário">
+                    <a class="btn btn-warning btn-sm" href="{% url 'cadastros:usuario_update' usuario.pk %}" title="Editar usuário">
                         <i class="fas fa-edit"></i>
                     </a>
                     {% elif user.pk == usuario.pk %}

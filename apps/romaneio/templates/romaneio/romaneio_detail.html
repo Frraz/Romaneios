@@ -1,50 +1,85 @@
 {% extends 'base.html' %}
-{% block title %}Romaneio Simples #{{ romaneio.numero_romaneio }}{% endblock %}
+{% block title %}Romaneio #{{ romaneio.numero_romaneio }}{% endblock %}
 
 {% block content %}
-<div class="card mx-auto shadow-sm" style="max-width: 900px;">
-    <div class="card-header bg-primary text-white d-flex align-items-center">
-        <i class="fas fa-file-invoice me-2"></i>
-        <span class="fs-5">Romaneio Simples #{{ romaneio.numero_romaneio }}</span>
-        <span class="ms-auto badge rounded-pill {% if romaneio.tipo_romaneio == 'NORMAL' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+<div class="card mx-auto shadow-sm" style="max-width: 1000px;">
+    <div class="card-header bg-primary text-white d-flex align-items-center gap-2 flex-wrap">
+        <i class="fas fa-file-invoice me-1"></i>
+
+        <span class="fs-5">
+            Romaneio #{{ romaneio.numero_romaneio }}
+        </span>
+
+        <span class="badge rounded-pill {% if romaneio.tipo_romaneio == 'NORMAL' %}bg-success{% else %}bg-warning text-dark{% endif %}">
             {{ romaneio.get_tipo_romaneio_display|default:romaneio.tipo_romaneio }}
         </span>
+
+        <span class="badge rounded-pill {% if romaneio.modalidade == 'DETALHADO' %}bg-dark{% else %}bg-secondary{% endif %}">
+            {{ romaneio.get_modalidade_display|default:romaneio.modalidade }}
+        </span>
+
+        {% if romaneio.desconto and romaneio.desconto != 0 %}
+            <span class="ms-auto badge rounded-pill bg-info text-dark">
+                Desconto: {{ romaneio.desconto|floatformat:2 }}%
+            </span>
+        {% else %}
+            <span class="ms-auto"></span>
+        {% endif %}
     </div>
+
     <div class="card-body">
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-4">
                 <strong>Nº Romaneio:</strong>
                 <span class="ms-1">{{ romaneio.numero_romaneio }}</span>
             </div>
+
             <div class="col-6 col-md-4">
                 <strong>Data:</strong>
                 <span class="ms-1">{{ romaneio.data_romaneio|date:"d/m/Y" }}</span>
             </div>
-            <div class="col-6 col-md-4">
+
+            <div class="col-12 col-md-4">
                 <strong>Cliente:</strong>
                 <span class="ms-1">{{ romaneio.cliente.nome }}</span>
             </div>
-            <div class="col-6 col-md-4">
+
+            <div class="col-12 col-md-4">
                 <strong>Motorista:</strong>
                 <span class="ms-1">{{ romaneio.motorista.nome|default:"—" }}</span>
             </div>
+
             <div class="col-6 col-md-4">
                 <strong>Total m³:</strong>
                 <span class="ms-1">{{ romaneio.m3_total|floatformat:3 }}</span>
             </div>
+
             <div class="col-6 col-md-4">
-                <strong>Total Valor:</strong>
+                <strong>Valor Bruto:</strong>
+                <span class="ms-1 fw-bold">R$ {{ romaneio.valor_bruto|floatformat:2 }}</span>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <strong>Valor Líquido:</strong>
                 <span class="ms-1 text-success fw-bold">R$ {{ romaneio.valor_total|floatformat:2 }}</span>
             </div>
         </div>
 
         <hr>
+
         <h5 class="mb-3"><i class="fas fa-list me-2"></i>Itens do Romaneio</h5>
+
         <div class="table-responsive mb-3">
             <table class="table table-bordered table-hover align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>Tipo de Madeira</th>
+
+                        {% if romaneio.modalidade == "DETALHADO" %}
+                            <th class="text-end">Comp.</th>
+                            <th>Rôdo</th>
+                        {% endif %}
+
                         <th class="text-end">Qtd. (m³)</th>
                         <th class="text-end">Valor Unit.</th>
                         <th class="text-end">Total Item</th>
@@ -54,13 +89,25 @@
                     {% for item in itens %}
                     <tr>
                         <td>{{ item.tipo_madeira.nome }}</td>
+
+                        {% if romaneio.modalidade == "DETALHADO" %}
+                            <td class="text-end">
+                                {{ item.comprimento|default:"—" }}
+                            </td>
+                            <td>
+                                {{ item.rodo|default:"—" }}
+                            </td>
+                        {% endif %}
+
                         <td class="text-end">{{ item.quantidade_m3|floatformat:3 }}</td>
                         <td class="text-end">R$ {{ item.valor_unitario|floatformat:2 }}</td>
                         <td class="text-end fw-bold text-success">R$ {{ item.valor_total|floatformat:2 }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted">Nenhum item registrado.</td>
+                        <td colspan="{% if romaneio.modalidade == 'DETALHADO' %}6{% else %}4{% endif %}" class="text-center text-muted">
+                            Nenhum item registrado.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -68,15 +115,22 @@
         </div>
 
         <!-- Totais do romaneio -->
-        <div class="row mb-3">
-            <div class="col-md-6 mb-2 mb-md-0">
-                <span class="badge bg-success fs-6">
+        <div class="row mb-3 g-2">
+            <div class="col-md-4">
+                <span class="badge bg-primary fs-6 w-100 text-start">
                     <i class="fas fa-cube"></i> Total m³: {{ romaneio.m3_total|floatformat:3 }}
                 </span>
             </div>
-            <div class="col-md-6 text-md-end">
-                <span class="badge bg-success fs-6">
-                    <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ romaneio.valor_total|floatformat:2 }}
+
+            <div class="col-md-4">
+                <span class="badge bg-secondary fs-6 w-100 text-start">
+                    <i class="fas fa-dollar-sign"></i> Bruto: R$ {{ romaneio.valor_bruto|floatformat:2 }}
+                </span>
+            </div>
+
+            <div class="col-md-4">
+                <span class="badge bg-success fs-6 w-100 text-start">
+                    <i class="fas fa-dollar-sign"></i> Líquido: R$ {{ romaneio.valor_total|floatformat:2 }}
                 </span>
             </div>
         </div>

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Excluir Tipo de Madeira{% endblock %}
+
+{% block content %}
+<div class="card mt-4">
+    <div class="card-header bg-danger text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-trash"></i> Confirmar Exclusão</span>
+            <a href="{% url 'cadastros:tipo_madeira_list' %}" class="btn btn-light btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <h5 class="mb-3">Deseja realmente excluir o tipo de madeira abaixo?</h5>
+        <ul class="list-group mb-4">
+            <li class="list-group-item"><strong>Nome:</strong> {{ object.nome }}</li>
+            <li class="list-group-item"><strong>Preço Normal:</strong> R$ {{ object.preco_normal|floatformat:2 }}</li>
+            <li class="list-group-item"><strong>Preço com Frete:</strong> R$ {{ object.preco_com_frete|floatformat:2 }}</li>
+            <li class="list-group-item">
+                <strong>Status:</strong>
+                {% if object.ativo %}
+                    <span class="badge bg-success">Ativo</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inativo</span>
+                {% endif %}
+            </li>
+        </ul>
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            Esta ação <strong>não poderá ser desfeita</strong>!
+        </div>
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Sim, excluir
+            </button>
+            <a href="{% url 'cadastros:tipo_madeira_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

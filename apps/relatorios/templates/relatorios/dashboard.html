@@ -13,8 +13,6 @@
     </div>
 </div>
 
-<!-- O restante do dashboard permanece igual! -->
-
 <!-- Cards de Estatísticas -->
 <div class="row mb-4">
     <div class="col-md-3 col-6 mb-3">
@@ -24,13 +22,17 @@
             <div class="stat-label">m³ vendidos no mês</div>
         </div>
     </div>
+
     <div class="col-md-3 col-6 mb-3">
         <div class="stat-card h-100">
             <i class="fas fa-dollar-sign text-success"></i>
-            <div class="stat-value text-success">R$ {{ total_faturado_mes|floatformat:2 }}</div>
+            <div class="stat-value text-success">
+                R$ {{ total_faturado_mes|floatformat:2|intcomma }}
+            </div>
             <div class="stat-label">Faturamento do mês</div>
         </div>
     </div>
+
     <div class="col-md-3 col-6 mb-3">
         <div class="stat-card h-100">
             <i class="fas fa-file-invoice text-info"></i>
@@ -38,10 +40,13 @@
             <div class="stat-label">Romaneios no mês</div>
         </div>
     </div>
+
     <div class="col-md-3 col-6 mb-3">
         <div class="stat-card h-100">
             <i class="fas fa-exclamation-triangle text-danger"></i>
-            <div class="stat-value text-danger">R$ {{ saldo_total_receber|floatformat:2 }}</div>
+            <div class="stat-value text-danger">
+                R$ {{ saldo_total_receber|floatformat:2|intcomma }}
+            </div>
             <div class="stat-label">Saldo a receber</div>
         </div>
     </div>
@@ -70,7 +75,7 @@
                             <tr>
                                 <td>{{ cliente.nome }}</td>
                                 <td class="text-end saldo-negativo">
-                                    R$ {{ cliente.saldo_atual|floatformat:2 }}
+                                    R$ {{ cliente.saldo_atual|floatformat:2|intcomma }}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -105,7 +110,7 @@
                             <tr>
                                 <td>{{ item.cliente__nome }}</td>
                                 <td class="text-end text-success">
-                                    R$ {{ item.total_comprado|floatformat:2 }}
+                                    R$ {{ item.total_comprado|floatformat:2|intcomma }}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -118,7 +123,5 @@
             </div>
         </div>
     </div>
-
 </div>
-
 {% endblock %}

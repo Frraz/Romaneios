@@ -2,19 +2,19 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Carrega variáveis do .env local
-load_dotenv()
-
+# Carrega variáveis do .env local (caminho padrão: BASE_DIR/.env)
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 # -------------
 # Segurança
 # -------------
 SECRET_KEY = os.getenv('SECRET_KEY', 'troque-esta-chave-supersegura')
-DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('true', '1', 'yes', 'sim')
+DEBUG = os.getenv('DEBUG', '').strip().lower() in ('true', '1', 'yes', 'sim')
+
 ALLOWED_HOSTS = [
-    host for host in os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').replace(',', ' ').split()
-    if host
+    host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').replace(',', ' ').split()
+    if host.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -35,7 +35,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    "widget_tweaks",
+    'widget_tweaks',
+
     # Apps do projeto
     'apps.cadastros',
     'apps.romaneio',
@@ -65,7 +66,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [BASE_DIR / "templates"],  # Templates globais
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -91,6 +92,7 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', 'lorak'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5433'),
+        # 'CONN_MAX_AGE': 600, # Opcional: persistência de conexões p/ produção
     }
 }
 
@@ -99,7 +101,7 @@ DATABASES = {
 # -------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -110,6 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Sao_Paulo'
 USE_I18N = True
+USE_L10N = True  # Suporte para formatação local de dados
 USE_TZ = True
 
 # -------------
@@ -140,34 +143,44 @@ MESSAGE_TAGS = {
 }
 
 # -------------
-# Produção: recomendações extras
+# Segurança extra para produção
 # -------------
 if not DEBUG:
-    # Segurança extra em produção
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    # SECURE_SSL_REDIRECT = True  # Habilite após HTTPS/Certbot configurado
-    # X_FRAME_OPTIONS = 'DENY'    # Habilite se não usar recursos embutidos
-    # LOGGING = {...}             # Adicione configuração de log para erros
-
-# Para e-mails de erro admins (opcional)
-# ADMINS = [('Seu Nome', 'seuemail@dominio.com.br')]
-# SERVER_EMAIL = 'erro@madereirajd.ferzion.com.br'
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, EMAIL_USE_SSL...
+    X_FRAME_OPTIONS = 'DENY'  # Protege contra clickjacking
+    # Lembre de configurar HTTPS no servidor e remover da lista de hosts o "localhost" em prod
+    # LOGGING = {...}  # Adicione logging detalhado de erros/falhas para produção
 
 # -------------
-# Debug helpers (não loga segredo, mostra hosts)
+# Email (Password reset / notificações)
+# -------------
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in ("true", "1", "yes", "sim")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").strip().lower() in ("true", "1", "yes", "sim")
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@localhost")
+
+# Domínio/protocolo para links no e-mail de reset
+SITE_DOMAIN = os.getenv("SITE_DOMAIN", "127.0.0.1:8000")
+SITE_PROTOCOL = os.getenv("SITE_PROTOCOL", "http")
+
+# -------------
+# Debug helpers
 # -------------
 if DEBUG:
     print("DEBUG = True | Django rodando em ambiente de desenvolvimento!")
     print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
 
 # -------------
-# Espaço para futuras integrações
+# Integrações futuras (REST, cache, etc)
 # -------------
 # REST_FRAMEWORK = {}
 # CACHES = {}

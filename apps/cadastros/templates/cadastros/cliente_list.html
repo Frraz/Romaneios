@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Clientes{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
@@ -10,31 +11,38 @@
             </a>
         </div>
     </div>
+
     <div class="card-body">
         <!-- Filtros -->
         <form class="row gy-2 gx-2 mb-3" method="get">
             <div class="col-auto">
-                <input type="text" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Buscar por nome...">
+                <input type="text" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Buscar por nome">
             </div>
+
             <div class="col-auto">
-                <select name="saldo" class="form-select">
+                <select name="saldo" class="form-select" aria-label="Filtrar por saldo">
                     <option value="">Saldo (todos)</option>
                     <option value="negativos" {% if request.GET.saldo == "negativos" %}selected{% endif %}>Negativos (devendo)</option>
                     <option value="positivos" {% if request.GET.saldo == "positivos" %}selected{% endif %}>Positivos (crédito)</option>
                     <option value="zerados" {% if request.GET.saldo == "zerados" %}selected{% endif %}>Zerados</option>
                 </select>
             </div>
+
             <div class="col-auto">
-                <select name="ordenar" class="form-select">
+                <select name="ordenar" class="form-select" aria-label="Ordenar">
                     <option value="nome" {% if request.GET.ordenar == "nome" or not request.GET.ordenar %}selected{% endif %}>Ordenar por Nome</option>
                     <option value="saldo" {% if request.GET.ordenar == "saldo" %}selected{% endif %}>Menor saldo</option>
                     <option value="saldo_desc" {% if request.GET.ordenar == "saldo_desc" %}selected{% endif %}>Maior saldo</option>
                 </select>
             </div>
+
             <div class="col-auto">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
             </div>
         </form>
+
         <!-- Tabela -->
         <div class="table-responsive">
             <table class="table table-hover align-middle">
@@ -45,41 +53,50 @@
                         <th scope="col">CPF/CNPJ</th>
                         <th scope="col" class="text-end">Saldo</th>
                         <th scope="col">Situação</th>
-                        <th scope="col" class="text-end"></th>
+                        <th scope="col" class="text-end">Ações</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for cliente in clientes %}
+                    {% with saldo=cliente.saldo_calc|default:cliente.saldo_atual %}
                     <tr>
                         <td>{{ cliente.nome }}</td>
                         <td>{{ cliente.telefone|default:"—" }}</td>
                         <td>
-                            <span class="input-cpf-cnpj" style="font-family: monospace;" title="CPF ou CNPJ">
+                            <span style="font-family: monospace;" title="CPF ou CNPJ">
                                 {{ cliente.cpf_cnpj|default:"—" }}
                             </span>
                         </td>
-                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}" title="Saldo atual">
-                            R$ {{ cliente.saldo_atual|default:"0.00"|floatformat:2 }}
+
+                        <td class="text-end {% if saldo > 0 %}saldo-positivo{% elif saldo < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}" title="Saldo atual">
+                            R$ {{ saldo|floatformat:2 }}
                         </td>
+
                         <td>
-                            {% if cliente.saldo_atual < 0 %}
+                            {% if saldo < 0 %}
                                 <span class="badge bg-danger">Devendo</span>
-                            {% elif cliente.saldo_atual > 0 %}
+                            {% elif saldo > 0 %}
                                 <span class="badge bg-success">Crédito</span>
                             {% else %}
                                 <span class="badge bg-secondary">Zerado</span>
                             {% endif %}
                         </td>
+
                         <td class="text-end">
-                            <a href="{% url 'cadastros:cliente_update' cliente.id %}" class="btn btn-sm btn-primary" title="Editar">
+                            <a href="{% url 'cadastros:cliente_update' cliente.id %}" class="btn btn-sm btn-primary" title="Editar" aria-label="Editar cliente">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="{% url 'cadastros:cliente_delete' cliente.id %}" class="btn btn-sm btn-danger" title="Excluir" 
+                            <a href="{% url 'cadastros:cliente_delete' cliente.id %}"
+                               class="btn btn-sm btn-danger"
+                               title="Excluir"
+                               aria-label="Excluir cliente"
                                onclick="return confirm('Tem certeza que deseja excluir este cliente?');">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </td>
                     </tr>
+                    {% endwith %}
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center text-muted">Nenhum cliente encontrado.</td>
@@ -88,29 +105,57 @@
                 </tbody>
             </table>
         </div>
+
         <!-- Paginação -->
         {% if is_paginated %}
-        {% with params=request.GET.urlencode|cut:'page=' %}
-        <nav>
+        {% with q=request.GET.q saldo=request.GET.saldo ordenar=request.GET.ordenar %}
+        <nav aria-label="Paginação de clientes">
             <ul class="pagination justify-content-center">
+
                 {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{{ params }}">&laquo; Primeiro</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ params }}">&lsaquo; Anterior</a>
-                    </li>
+                <li class="page-item">
+                    <a class="page-link"
+                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
+                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
+                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
+                              page=1">
+                        &laquo; Primeiro
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
+                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
+                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
+                              page={{ page_obj.previous_page_number }}">
+                        &lsaquo; Anterior
+                    </a>
+                </li>
                 {% endif %}
+
                 <li class="page-item disabled">
                     <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
                 </li>
+
                 {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ params }}">Próxima &rsaquo;</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ params }}">Última &raquo;</a>
-                    </li>
+                <li class="page-item">
+                    <a class="page-link"
+                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
+                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
+                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
+                              page={{ page_obj.next_page_number }}">
+                        Próxima &rsaquo;
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
+                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
+                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
+                              page={{ page_obj.paginator.num_pages }}">
+                        Última &raquo;
+                    </a>
+                </li>
                 {% endif %}
             </ul>
         </nav>

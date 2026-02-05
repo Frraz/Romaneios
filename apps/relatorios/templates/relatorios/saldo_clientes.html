@@ -1,15 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Relatório de Saldo de Clientes{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
         <i class="fas fa-balance-scale"></i> Relatório de Saldo de Clientes
     </div>
+
     <div class="card-body">
         <!-- Filtros -->
         <form class="row gy-2 gx-2 mb-3" method="get">
             <div class="col-auto">
-                <select name="tipo_saldo" class="form-select">
+                <select name="tipo_saldo" class="form-select" aria-label="Filtrar por tipo de saldo">
                     <option value="todos" {% if request.GET.tipo_saldo == "todos" or not request.GET.tipo_saldo %}selected{% endif %}>Todos</option>
                     <option value="negativos" {% if request.GET.tipo_saldo == "negativos" %}selected{% endif %}>Negativos (Devendo)</option>
                     <option value="positivos" {% if request.GET.tipo_saldo == "positivos" %}selected{% endif %}>Positivos (Crédito)</option>
@@ -22,6 +24,7 @@
                 </button>
             </div>
         </form>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
@@ -33,25 +36,30 @@
                         <th>Situação</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for cliente in clientes %}
+                    {% with saldo=cliente.saldo_calc|default:cliente.saldo_atual %}
                     <tr>
                         <td>{{ cliente.nome }}</td>
                         <td>{{ cliente.telefone|default:"—" }}</td>
                         <td>{{ cliente.cpf_cnpj|default:"—" }}</td>
-                        <td class="text-end {% if cliente.saldo_atual > 0 %}saldo-positivo{% elif cliente.saldo_atual < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}">
-                            R$ {{ cliente.saldo_atual|floatformat:2 }}
+
+                        <td class="text-end {% if saldo > 0 %}saldo-positivo{% elif saldo < 0 %}saldo-negativo{% else %}saldo-zerado{% endif %}">
+                            R$ {{ saldo|floatformat:2 }}
                         </td>
+
                         <td>
-                            {% if cliente.saldo_atual < 0 %}
+                            {% if saldo < 0 %}
                                 <span class="badge bg-danger">Devendo</span>
-                            {% elif cliente.saldo_atual > 0 %}
+                            {% elif saldo > 0 %}
                                 <span class="badge bg-success">Crédito</span>
                             {% else %}
                                 <span class="badge bg-secondary">Zerado</span>
                             {% endif %}
                         </td>
                     </tr>
+                    {% endwith %}
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center text-muted">Nenhum cliente encontrado.</td>
@@ -60,6 +68,7 @@
                 </tbody>
             </table>
         </div>
+
     </div>
 </div>
 {% endblock %}

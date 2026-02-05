@@ -30,6 +30,7 @@
                             <i class="fas fa-home"></i> Dashboard
                         </a>
                     </li>
+
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -44,20 +45,20 @@
                             {% endif %}
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+
+                    <!-- ROMANEIOS (base única) -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'romaneio:romaneio_list' %}">
                             <i class="fas fa-file-invoice"></i> Romaneios
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'romaneio:romaneio_list' %}">Romaneio Simples</a></li>
-                            <li><a class="dropdown-item" href="{% url 'romaneio:romaneio_detalhado_list' %}">Romaneio Detalhado</a></li>
-                        </ul>
                     </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'financeiro:pagamento_list' %}">
                             <i class="fas fa-money-bill-wave"></i> Pagamentos
                         </a>
                     </li>
+
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-chart-bar"></i> Relatórios
@@ -71,6 +72,7 @@
                     </li>
                     {% endif %}
                 </ul>
+
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
@@ -121,6 +123,7 @@
             </div>
         </div>
     </nav>
+
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
         <div class="offcanvas-header border-bottom pb-2">
             <h5 class="offcanvas-title fw-bold" id="mobileMenuLabel">
@@ -135,6 +138,7 @@
                         <i class="fas fa-home"></i> Dashboard
                     </a>
                 </li>
+
                 {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#cadastrosMobileMenu" role="button" aria-expanded="false" aria-controls="cadastrosMobileMenu">
@@ -152,23 +156,20 @@
                         </ul>
                     </div>
                 </li>
+
+                <!-- ROMANEIOS (base única) -->
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#romaneiosMobileMenu" role="button" aria-expanded="false" aria-controls="romaneiosMobileMenu">
-                        <i class="fas fa-file-invoice me-2"></i> Romaneios
-                        <i class="fas fa-chevron-down ms-auto small text-muted"></i>
+                    <a class="nav-link" href="{% url 'romaneio:romaneio_list' %}">
+                        <i class="fas fa-file-invoice"></i> Romaneios
                     </a>
-                    <div class="collapse ps-3" id="romaneiosMobileMenu">
-                        <ul class="navbar-nav flex-column mb-2">
-                            <li><a class="nav-link" href="{% url 'romaneio:romaneio_list' %}">Romaneio Simples</a></li>
-                            <li><a class="nav-link" href="{% url 'romaneio:romaneio_detalhado_list' %}">Romaneio Detalhado</a></li>
-                        </ul>
-                    </div>
                 </li>
+
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'financeiro:pagamento_list' %}">
                         <i class="fas fa-money-bill-wave"></i> Pagamentos
                     </a>
                 </li>
+
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#relatoriosMobileMenu" role="button" aria-expanded="false" aria-controls="relatoriosMobileMenu">
                         <i class="fas fa-chart-bar me-2"></i> Relatórios
@@ -212,7 +213,7 @@
             <p class="mb-0 text-muted">
                 &copy; {% now "Y" %} Sistema de Romaneio de Madeiras |
                 Desenvolvido com Django
-                <img src="https://img.icons8.com/?size=100&id=LPmcJ9e0FU7K&format=png&color=000000" 
+                <img src="https://img.icons8.com/?size=100&id=LPmcJ9e0FU7K&format=png&color=000000"
                     alt="Django"
                     class="ms-1"
                     style="width: 16px; height: 16px;">
@@ -253,12 +254,14 @@
         $(function() {
             $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
         });
+
         // Modal dev info responsivo
         (function(){
             const link = document.getElementById('devInfoLink');
             const dialog = document.getElementById('devInfoDialog');
             const closeBtn = document.getElementById('devInfoClose');
             if (!link || !dialog) return;
+
             function openDialog() {
                 if (typeof dialog.showModal === 'function') {
                     dialog.showModal();
@@ -267,12 +270,15 @@
                     document.getElementById('devInfoDialogFallback').classList.remove('d-none');
                 }
             }
+
             function closeDialog() {
                 if (dialog.open) { dialog.close(); }
                 document.getElementById('devInfoDialogFallback').classList.add('d-none');
             }
+
             link.addEventListener('click', function(ev){ ev.preventDefault(); openDialog(); });
             closeBtn.addEventListener('click', function(){ closeDialog(); });
+
             dialog.addEventListener('click', function(event) {
                 const rect = dialog.getBoundingClientRect();
                 const isInDialog = (

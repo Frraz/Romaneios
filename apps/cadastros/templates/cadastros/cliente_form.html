@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
 {% block title %}{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}{% endblock %}
 
 {% block extra_css %}
@@ -11,14 +12,16 @@
 {% endblock %}
 
 {% block content %}
-<div class="card mx-auto" style="max-width: 600px;">
-    <div class="card-header">
-        <i class="fas fa-user"></i> 
+<div class="card mx-auto mt-4 shadow-sm" style="max-width: 600px;">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-user"></i>
         {% if object %}Editar{% else %}Novo{% endif %} Cliente
     </div>
     <div class="card-body">
+
         <form method="post" novalidate autocomplete="off">
             {% csrf_token %}
+
             {% if form.non_field_errors %}
                 <div class="alert alert-danger mb-3">
                     {% for error in form.non_field_errors %}
@@ -26,47 +29,85 @@
                     {% endfor %}
                 </div>
             {% endif %}
+
             <div class="mb-3">
                 {{ form.nome.label_tag }}
-                {{ form.nome }}
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
+                    {{ form.nome|add_class:"form-control" }}
+                </div>
                 {% if form.nome.errors %}
                     <div class="text-danger small mt-1">
                         {% for error in form.nome.errors %}<div>{{ error }}</div>{% endfor %}
                     </div>
                 {% endif %}
             </div>
+
+            <!-- Tipo de pessoa: Física / Jurídica -->
+            <div class="mb-3">
+                <label class="form-label">{{ form.tipo_pessoa.label }}</label>
+                <div>
+                    {% for radio in form.tipo_pessoa %}
+                        <div class="form-check form-check-inline">
+                            {{ radio.tag }}
+                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                {{ radio.choice_label }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if form.tipo_pessoa.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.tipo_pessoa.errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
             <div class="mb-3">
                 {{ form.cpf_cnpj.label_tag }}
-                {{ form.cpf_cnpj }}
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                    {{ form.cpf_cnpj|add_class:"form-control input-cpf-cnpj" }}
+                </div>
                 {% if form.cpf_cnpj.errors %}
                     <div class="text-danger small mt-1">
                         {% for error in form.cpf_cnpj.errors %}<div>{{ error }}</div>{% endfor %}
                     </div>
                 {% endif %}
                 <small class="form-text text-muted">
-                    Informe um <b>CPF</b> (xxx.xxx.xxx-xx) ou <b>CNPJ</b> (xx.xxx.xxx/xxxx-xx).
+                    Selecione <b>Pessoa Física</b> para CPF (<code>000.000.000-00</code>) 
+                    ou <b>Pessoa Jurídica</b> para CNPJ (<code>00.000.000/0000-00</code>).
                 </small>
             </div>
+
             <div class="mb-3">
                 {{ form.telefone.label_tag }}
-                {{ form.telefone }}
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                    {{ form.telefone|add_class:"form-control" }}
+                </div>
                 {% if form.telefone.errors %}
                     <div class="text-danger small mt-1">
                         {% for error in form.telefone.errors %}<div>{{ error }}</div>{% endfor %}
                     </div>
                 {% endif %}
             </div>
+
             <div class="mb-3">
                 {{ form.endereco.label_tag }}
-                {{ form.endereco }}
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                    {{ form.endereco|add_class:"form-control" }}
+                </div>
                 {% if form.endereco.errors %}
                     <div class="text-danger small mt-1">
                         {% for error in form.endereco.errors %}<div>{{ error }}</div>{% endfor %}
                     </div>
                 {% endif %}
             </div>
-            <div class="form-check mb-3">
-                {{ form.ativo }}
+
+            <div class="form-check mb-4">
+                {{ form.ativo|add_class:"form-check-input" }}
                 {{ form.ativo.label_tag }}
                 {% if form.ativo.errors %}
                     <div class="text-danger small mt-1">
@@ -74,6 +115,7 @@
                     </div>
                 {% endif %}
             </div>
+
             <div class="d-flex justify-content-between align-items-center">
                 <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar
@@ -83,6 +125,7 @@
                 </button>
             </div>
         </form>
+
     </div>
 </div>
 {% endblock %}
@@ -90,20 +133,33 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-    // Máscara dinâmica: CPF ou CNPJ
-    function setCpfCnpjMask() {
-        const $input = $('.input-cpf-cnpj');
-        $input.each(function(){
-            $(this).unmask();
-            let val = $(this).val().replace(/\D/g, '');
-            if (val.length > 11) {
-                $(this).mask("00.000.000/0000-00");
-            } else {
-                $(this).mask("000.000.000-00");
-            }
-        });
+$(document).ready(function () {
+    var $campo = $(".input-cpf-cnpj");
+    var $radios = $("input[name='tipo_pessoa']");
+
+    function aplicarMascaraPorTipo() {
+        var tipo = $radios.filter(":checked").val(); // "F" ou "J"
+        $campo.unmask();
+        if (tipo === "J") {
+            // Pessoa Jurídica -> CNPJ
+            $campo.mask("00.000.000/0000-00");
+        } else {
+            // Pessoa Física -> CPF
+            $campo.mask("000.000.000-00");
+        }
     }
-    $(document).on("input", ".input-cpf-cnpj", setCpfCnpjMask);
-    $(document).ready(setCpfCnpjMask);
+
+    // Aplica máscara inicial conforme o tipo selecionado (padrão F)
+    aplicarMascaraPorTipo();
+
+    // Ao trocar o tipo de pessoa, troca a máscara
+    $radios.on("change", function () {
+        // Mantém apenas dígitos enquanto troca máscara
+        var digitos = $campo.val().replace(/\D/g, "");
+        aplicarMascaraPorTipo();
+        $campo.val(digitos);
+        $campo.trigger("input"); // força reformatar conforme a máscara nova
+    });
+});
 </script>
 {% endblock %}

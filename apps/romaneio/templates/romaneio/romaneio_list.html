@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Romaneios Simples{% endblock %}
+{% block title %}Romaneios{% endblock %}
 
 {% block content %}
 <div class="card shadow-sm">
@@ -9,12 +9,14 @@
             <i class="fas fa-plus"></i> Novo Romaneio
         </a>
     </div>
+
     <div class="card-body">
         <!-- Filtros -->
         <form method="get" class="row gx-2 gy-2 mb-3">
             <div class="col-md-2">
                 <input type="text" name="numero" value="{{ request.GET.numero }}" class="form-control" placeholder="Nº Romaneio">
             </div>
+
             <div class="col-md-3">
                 <select name="cliente" class="form-select">
                     <option value="">Todos os Clientes</option>
@@ -25,6 +27,18 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="col-md-2">
+                <select name="modalidade" class="form-select">
+                    <option value="">Modalidade</option>
+                    {% for value,label in modalidades %}
+                        <option value="{{ value }}" {% if request.GET.modalidade == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="col-md-2">
                 <select name="mes" class="form-select">
                     <option value="">Mês</option>
@@ -35,6 +49,7 @@
                     {% endfor %}
                 </select>
             </div>
+
             <div class="col-md-2">
                 <select name="ano" class="form-select">
                     <option value="">Ano</option>
@@ -43,9 +58,10 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter"></i> Filtrar
+
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100" title="Filtrar">
+                    <i class="fas fa-filter"></i>
                 </button>
             </div>
         </form>
@@ -71,6 +87,8 @@
                         <th>Cliente</th>
                         <th>Motorista</th>
                         <th>Tipo</th>
+                        <th>Modalidade</th>
+                        <th class="text-end">Desconto</th>
                         <th class="text-end">m³</th>
                         <th class="text-end">Valor</th>
                         <th class="text-end">Ações</th>
@@ -87,6 +105,7 @@
                         <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
                         <td>{{ romaneio.cliente.nome }}</td>
                         <td>{{ romaneio.motorista.nome|default:"—" }}</td>
+
                         <td>
                             {% if romaneio.tipo_romaneio == "NORMAL" %}
                                 <span class="badge bg-primary">Normal</span>
@@ -94,8 +113,26 @@
                                 <span class="badge bg-warning text-dark">Com Frete</span>
                             {% endif %}
                         </td>
+
+                        <td>
+                            {% if romaneio.modalidade == "DETALHADO" %}
+                                <span class="badge bg-dark">Detalhado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Simples</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end">
+                            {% if romaneio.desconto and romaneio.desconto != 0 %}
+                                {{ romaneio.desconto|floatformat:2 }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
                         <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
                         <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
+
                         <td class="text-end">
                             <a href="{% url 'romaneio:romaneio_update' romaneio.id %}" class="btn btn-sm btn-primary" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -104,7 +141,9 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">Nenhum romaneio encontrado para os filtros aplicados.</td>
+                        <td colspan="10" class="text-center text-muted">
+                            Nenhum romaneio encontrado para os filtros aplicados.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -113,45 +152,57 @@
 
         <!-- Paginação -->
         {% if is_paginated %}
+        {% with numero=request.GET.numero cliente=request.GET.cliente mes=request.GET.mes ano=request.GET.ano modalidade=request.GET.modalidade %}
         <nav>
             <ul class="pagination justify-content-center">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if request.GET.numero %}numero={{ request.GET.numero }}&{% endif %}
-                    {% if request.GET.cliente %}cliente={{ request.GET.cliente }}&{% endif %}
-                    {% if request.GET.mes %}mes={{ request.GET.mes }}&{% endif %}
-                    {% if request.GET.ano %}ano={{ request.GET.ano }}&{% endif %}
-                    page=1">&laquo;</a>
+                    <a class="page-link"
+                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
+                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
+                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
+                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
+                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
+                              page=1">&laquo;</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?{% if request.GET.numero %}numero={{ request.GET.numero }}&{% endif %}
-                    {% if request.GET.cliente %}cliente={{ request.GET.cliente }}&{% endif %}
-                    {% if request.GET.mes %}mes={{ request.GET.mes }}&{% endif %}
-                    {% if request.GET.ano %}ano={{ request.GET.ano }}&{% endif %}
-                    page={{ page_obj.previous_page_number }}">&lsaquo;</a>
+                    <a class="page-link"
+                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
+                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
+                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
+                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
+                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
+                              page={{ page_obj.previous_page_number }}">&lsaquo;</a>
                 </li>
                 {% endif %}
+
                 <li class="page-item disabled">
                     <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
                 </li>
+
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?{% if request.GET.numero %}numero={{ request.GET.numero }}&{% endif %}
-                    {% if request.GET.cliente %}cliente={{ request.GET.cliente }}&{% endif %}
-                    {% if request.GET.mes %}mes={{ request.GET.mes }}&{% endif %}
-                    {% if request.GET.ano %}ano={{ request.GET.ano }}&{% endif %}
-                    page={{ page_obj.next_page_number }}">&rsaquo;</a>
+                    <a class="page-link"
+                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
+                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
+                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
+                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
+                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
+                              page={{ page_obj.next_page_number }}">&rsaquo;</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?{% if request.GET.numero %}numero={{ request.GET.numero }}&{% endif %}
-                    {% if request.GET.cliente %}cliente={{ request.GET.cliente }}&{% endif %}
-                    {% if request.GET.mes %}mes={{ request.GET.mes }}&{% endif %}
-                    {% if request.GET.ano %}ano={{ request.GET.ano }}&{% endif %}
-                    page={{ page_obj.paginator.num_pages }}">&raquo;</a>
+                    <a class="page-link"
+                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
+                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
+                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
+                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
+                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
+                              page={{ page_obj.paginator.num_pages }}">&raquo;</a>
                 </li>
                 {% endif %}
             </ul>
         </nav>
+        {% endwith %}
         {% endif %}
     </div>
 </div>

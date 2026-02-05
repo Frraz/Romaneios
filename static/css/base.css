@@ -38,9 +38,7 @@ body {
         border-right: 1.5px solid #dee2e6;
         box-shadow: 1px 0 12px 0 rgba(0,0,0,0.09);
     }
-    .offcanvas-backdrop.show {
-        opacity: 0.41;
-    }
+    .offcanvas-backdrop.show { opacity: 0.41; }
 }
 .offcanvas .navbar-nav .nav-link {
     font-size: 1.12rem;
@@ -62,9 +60,7 @@ body {
     background: none;
 }
 @media (max-width: 700px) {
-    .content-wrapper {
-        padding: 1rem 0.2rem;
-    }
+    .content-wrapper { padding: 1rem 0.2rem; }
 }
 
 /* ========== CARDS, CABEÇALHOS ========== */
@@ -127,14 +123,12 @@ body {
 .badge.bg-dark { background-color: #222 !important; }
 
 /* ========== SALDOS ========= */
-.saldo-positivo   { color: var(--success-color); font-weight: 600; }
-.saldo-negativo   { color: var(--danger-color); font-weight: 600; }
-.saldo-zerado     { color: #888; font-weight: 600; }
+.saldo-positivo { color: var(--success-color); font-weight: 600; }
+.saldo-negativo { color: var(--danger-color); font-weight: 600; }
+.saldo-zerado   { color: #888; font-weight: 600; }
 
 /* ========== TABELAS ========= */
-.table-hover tbody tr:hover {
-    background-color: #e4eee0;
-}
+.table-hover tbody tr:hover { background-color: #e4eee0; }
 
 /* ========== CARDS DE ESTATÍSTICAS ========== */
 .stat-card {
@@ -170,10 +164,14 @@ body {
 .select2-container .select2-selection__rendered {
     line-height: 26px !important;
 }
-/* Para o dropdown select2 não sumir atrás de modais */
-.select2-container {
-    z-index: 9999 !important;
+
+/* Evita dropdown do Select2 ficar atrás de offcanvas/modais Bootstrap */
+.select2-dropdown {
+    z-index: 1060 !important;
 }
+
+/* (removido) z-index global alto no container pois pode causar sobreposição indevida */
+/* .select2-container { z-index: 9999 !important; } */
 
 /* ========== FOOTER ========== */
 footer {
@@ -183,7 +181,6 @@ footer {
     color: #687178;
     border-top: 1px solid #eaeaea;
 }
-/* Footer responsivo */
 @media (max-width: 700px) {
     footer {
         font-size: 0.89rem;
@@ -201,9 +198,22 @@ dialog[open] {
     box-shadow: var(--shadow);
     animation: fadeInDialog 0.2s;
 }
+dialog::backdrop {
+    background: rgba(0,0,0,0.35);
+}
 @keyframes fadeInDialog {
     0% { transform: scale(0.98); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+/* Acessibilidade: foco visível */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: 3px solid rgba(248, 183, 57, 0.55);
+    outline-offset: 2px;
 }
 
 /* Adicionais de utilidade */
@@ -212,8 +222,10 @@ a:hover { color: var(--accent-color); }
 hr { color: #eaeaea; }
 
 /* Scroll e seleção modernos */
-::-webkit-scrollbar-thumb { background: var(--secondary-color); border-radius:8px; }
+::-webkit-scrollbar-thumb { background: var(--secondary-color); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 ::-webkit-scrollbar-track { background: #f5f7fa; }
 ::-webkit-scrollbar { width: 8px; }
+
 /* Seleção suave */
 ::selection { background: #cce2c7; color: #222; }
