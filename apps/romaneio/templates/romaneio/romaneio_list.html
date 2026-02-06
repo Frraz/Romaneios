@@ -12,12 +12,14 @@
 
     <div class="card-body">
         <!-- Filtros -->
-        <form method="get" class="row gx-2 gy-2 mb-3">
+        <form method="get" class="row gx-2 gy-2 mb-3 align-items-end">
             <div class="col-md-2">
-                <input type="text" name="numero" value="{{ request.GET.numero }}" class="form-control" placeholder="Nº Romaneio">
+                <label class="form-label small text-muted mb-1">Nº Romaneio</label>
+                <input type="text" name="numero" value="{{ request.GET.numero }}" class="form-control" placeholder="Ex: 11613">
             </div>
 
             <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Cliente</label>
                 <select name="cliente" class="form-select">
                     <option value="">Todos os Clientes</option>
                     {% for cliente in clientes %}
@@ -29,8 +31,9 @@
             </div>
 
             <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Modalidade</label>
                 <select name="modalidade" class="form-select">
-                    <option value="">Modalidade</option>
+                    <option value="">Todas</option>
                     {% for value,label in modalidades %}
                         <option value="{{ value }}" {% if request.GET.modalidade == value %}selected{% endif %}>
                             {{ label }}
@@ -40,41 +43,51 @@
             </div>
 
             <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Mês</label>
                 <select name="mes" class="form-select">
-                    <option value="">Mês</option>
-                    {% for m in "123456789012" %}
-                        <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>
-                            {{ forloop.counter }}
+                    <option value="">Todos</option>
+                    {% for m in meses %}
+                        <option value="{{ m }}" {% if m|stringformat:"s" == request.GET.mes %}selected{% endif %}>
+                            {{ m }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Ano</label>
                 <select name="ano" class="form-select">
-                    <option value="">Ano</option>
+                    <option value="">Todos</option>
                     {% for ano in anos %}
                         <option value="{{ ano }}" {% if request.GET.ano == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-primary w-100" title="Filtrar">
+            <div class="col-md-1 d-grid gap-2">
+                <button type="submit" class="btn btn-primary" title="Filtrar" aria-label="Filtrar">
                     <i class="fas fa-filter"></i>
                 </button>
+                <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros" aria-label="Limpar filtros">
+                    Limpar
+                </a>
             </div>
         </form>
 
         <!-- Totais do período -->
-        <div class="mb-3">
-            <span class="badge bg-primary me-2">
+        <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+            <span class="badge bg-primary">
                 <i class="fas fa-cube"></i> Total m³: {{ total_m3_periodo|floatformat:3 }}
             </span>
-            <span class="badge bg-success me-2">
+            <span class="badge bg-success">
                 <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ total_valor_periodo|floatformat:2 }}
             </span>
-            <span class="text-muted ms-2">({{ romaneios|length }} romaneios)</span>
+
+            {# Atenção: romaneios|length só conta os itens da PÁGINA atual.
+               Para contar total do filtro, o ideal seria passar page_obj.paginator.count no context. #}
+            <span class="text-muted ms-1">
+                ({{ page_obj.paginator.count }} romaneios)
+            </span>
         </div>
 
         <!-- Tabela de romaneios -->
@@ -82,7 +95,7 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Nº Romaneio</th>
+                        <th>Nº</th>
                         <th>Data</th>
                         <th>Cliente</th>
                         <th>Motorista</th>
@@ -98,28 +111,33 @@
                     {% for romaneio in romaneios %}
                     <tr>
                         <td>
-                            <a href="{% url 'romaneio:romaneio_detail' romaneio.id %}" class="fw-bold text-decoration-none" title="Ver detalhes">
+                            <a href="{% url 'romaneio:romaneio_detail' romaneio.id %}"
+                               class="fw-bold text-decoration-none"
+                               title="Ver detalhes do romaneio {{ romaneio.numero_romaneio }}">
                                 {{ romaneio.numero_romaneio }}
                             </a>
                         </td>
-                        <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
-                        <td>{{ romaneio.cliente.nome }}</td>
-                        <td>{{ romaneio.motorista.nome|default:"—" }}</td>
 
-                        <td>
-                            {% if romaneio.tipo_romaneio == "NORMAL" %}
-                                <span class="badge bg-primary">Normal</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Com Frete</span>
-                            {% endif %}
+                        <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
+
+                        <td class="text-truncate" style="max-width: 260px;">
+                            {{ romaneio.cliente.nome }}
+                        </td>
+
+                        <td class="text-truncate" style="max-width: 200px;">
+                            {{ romaneio.motorista.nome|default:"—" }}
                         </td>
 
                         <td>
-                            {% if romaneio.modalidade == "DETALHADO" %}
-                                <span class="badge bg-dark">Detalhado</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Simples</span>
-                            {% endif %}
+                            <span class="badge {% if romaneio.tipo_romaneio == 'NORMAL' %}bg-primary{% else %}bg-warning text-dark{% endif %}">
+                                {{ romaneio.get_tipo_romaneio_display|default:"—" }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge {% if romaneio.modalidade == 'DETALHADO' %}bg-dark{% else %}bg-secondary{% endif %}">
+                                {{ romaneio.get_modalidade_display|default:"—" }}
+                            </span>
                         </td>
 
                         <td class="text-end">
@@ -134,9 +152,20 @@
                         <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
 
                         <td class="text-end">
-                            <a href="{% url 'romaneio:romaneio_update' romaneio.id %}" class="btn btn-sm btn-primary" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                            <div class="btn-group" role="group" aria-label="Ações do romaneio">
+                                <a href="{% url 'romaneio:romaneio_detail' romaneio.id %}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Ver detalhes"
+                                   aria-label="Ver detalhes">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'romaneio:romaneio_update' romaneio.id %}"
+                                   class="btn btn-sm btn-primary"
+                                   title="Editar"
+                                   aria-label="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
@@ -152,27 +181,20 @@
 
         <!-- Paginação -->
         {% if is_paginated %}
-        {% with numero=request.GET.numero cliente=request.GET.cliente mes=request.GET.mes ano=request.GET.ano modalidade=request.GET.modalidade %}
-        <nav>
-            <ul class="pagination justify-content-center">
+        {% with params=request.GET.urlencode %}
+        <nav aria-label="Paginação de romaneios">
+            <ul class="pagination justify-content-center flex-wrap">
+
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link"
-                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
-                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
-                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
-                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
-                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
-                              page=1">&laquo;</a>
+                    <a class="page-link" href="?page=1{% if params %}&{{ params|cut:'page=' }}{% endif %}" aria-label="Primeira página">
+                        &laquo;
+                    </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link"
-                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
-                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
-                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
-                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
-                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
-                              page={{ page_obj.previous_page_number }}">&lsaquo;</a>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if params %}&{{ params|cut:'page=' }}{% endif %}" aria-label="Página anterior">
+                        &lsaquo;
+                    </a>
                 </li>
                 {% endif %}
 
@@ -182,22 +204,14 @@
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link"
-                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
-                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
-                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
-                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
-                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
-                              page={{ page_obj.next_page_number }}">&rsaquo;</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if params %}&{{ params|cut:'page=' }}{% endif %}" aria-label="Próxima página">
+                        &rsaquo;
+                    </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link"
-                       href="?{% if numero %}numero={{ numero|urlencode }}&{% endif %}
-                              {% if cliente %}cliente={{ cliente|urlencode }}&{% endif %}
-                              {% if modalidade %}modalidade={{ modalidade|urlencode }}&{% endif %}
-                              {% if mes %}mes={{ mes|urlencode }}&{% endif %}
-                              {% if ano %}ano={{ ano|urlencode }}&{% endif %}
-                              page={{ page_obj.paginator.num_pages }}">&raquo;</a>
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if params %}&{{ params|cut:'page=' }}{% endif %}" aria-label="Última página">
+                        &raquo;
+                    </a>
                 </li>
                 {% endif %}
             </ul>

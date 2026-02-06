@@ -5,11 +5,17 @@ from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
 from apps.cadastros.models import Cliente, Motorista, TipoMadeira
-from .models import Romaneio, ItemRomaneio
+from .models import ItemRomaneio, Romaneio, UnidadeRomaneio
 
 
-# ================= ROMANEIO (ÚNICO) =================
+# ================= ROMANEIO =================
 class RomaneioForm(forms.ModelForm):
+    """
+    Form principal do Romaneio.
+    - Filtra Cliente/Motorista apenas ativos
+    - Widget HTML5 para data (YYYY-MM-DD)
+    """
+
     class Meta:
         model = Romaneio
         fields = [
@@ -19,92 +25,81 @@ class RomaneioForm(forms.ModelForm):
             "motorista",
             "tipo_romaneio",
             "modalidade",
-            "desconto",
         ]
         widgets = {
             "numero_romaneio": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: 11613"}),
-            "data_romaneio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "data_romaneio": forms.DateInput(format="%Y-%m-%d", attrs={"class": "form-control", "type": "date"}),
             "cliente": forms.Select(attrs={"class": "form-control select2"}),
             "motorista": forms.Select(attrs={"class": "form-control select2"}),
             "tipo_romaneio": forms.Select(attrs={"class": "form-control"}),
             "modalidade": forms.Select(attrs={"class": "form-control"}),
-            "desconto": forms.NumberInput(attrs={
-                "class": "form-control",
-                "placeholder": "0.00",
-                "step": "0.01",
-                "min": 0,
-                "max": 100,
-            }),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["cliente"].queryset = Cliente.objects.filter(ativo=True)
-        self.fields["motorista"].queryset = Motorista.objects.filter(ativo=True)
 
-        # Opcional: ao criar, já deixa SIMPLES por padrão (model já tem default)
-        # self.fields["modalidade"].initial = "SIMPLES"
+        self.fields["cliente"].queryset = Cliente.objects.filter(ativo=True).order_by("nome")
+        self.fields["motorista"].queryset = Motorista.objects.filter(ativo=True).order_by("nome")
 
-    def clean_desconto(self):
-        desconto = self.cleaned_data.get("desconto")
-        if desconto is None:
-            return Decimal("0.00")
-        if desconto < 0 or desconto > 100:
-            raise ValidationError("O desconto deve estar entre 0 e 100.")
-        return desconto
+        if self.instance and self.instance.pk and self.instance.data_romaneio:
+            self.fields["data_romaneio"].initial = self.instance.data_romaneio.strftime("%Y-%m-%d")
 
 
+# ================= ITEM ROMANEIO =================
 class ItemRomaneioForm(forms.ModelForm):
+    """
+    Item do Romaneio:
+    - Tipo de madeira
+    - Quantidade total (m³)
+      * SIMPLES: usuário informa
+      * DETALHADO: calculado pelas unidades (campo pode vir preenchido pelo JS)
+    - Valor unitário (m³)
+    """
+
     class Meta:
         model = ItemRomaneio
         fields = [
             "tipo_madeira",
-            "comprimento",
-            "rodo",
-            "quantidade_m3",
+            "quantidade_m3_total",
             "valor_unitario",
         ]
         widgets = {
-            "tipo_madeira": forms.Select(attrs={
-                "class": "form-control select2 tipo-madeira-select",
-                "onchange": "atualizarPreco(this)",
-            }),
-            # Campos "detalhados" (serão obrigatórios via formset quando modalidade=DETALHADO)
-            "comprimento": forms.NumberInput(attrs={
-                "class": "form-control",
-                "step": "0.01",
-                "min": "0.01",
-                "placeholder": "Ex: 3.00",
-            }),
-            "rodo": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Rôdo",
-            }),
-            "quantidade_m3": forms.NumberInput(attrs={
-                "class": "form-control",
-                "step": "0.001",
-                "min": "0.001",
-                "placeholder": "0.000",
-                "onchange": "calcularTotal(this)",
-            }),
-            "valor_unitario": forms.NumberInput(attrs={
-                "class": "form-control valor-unitario",
-                "step": "0.01",
-                "min": "0.01",
-                "placeholder": "0.00",
-                "readonly": "readonly",
-            }),
+            "tipo_madeira": forms.Select(
+                attrs={
+                    "class": "form-control select2 tipo-madeira-select",
+                    "onchange": "atualizarPrecoItem(this)",
+                }
+            ),
+            "quantidade_m3_total": forms.NumberInput(
+                attrs={
+                    "class": "form-control quantidade-m3-total",
+                    "step": "0.001",
+                    "min": "0.001",
+                    "placeholder": "0.000",
+                    "inputmode": "decimal",
+                }
+            ),
+            "valor_unitario": forms.NumberInput(
+                attrs={
+                    "class": "form-control valor-unitario",
+                    "step": "0.01",
+                    "min": "0.01",
+                    "placeholder": "0.00",
+                    "readonly": "readonly",
+                    "inputmode": "decimal",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["tipo_madeira"].queryset = TipoMadeira.objects.filter(ativo=True)
+        self.fields["tipo_madeira"].queryset = TipoMadeira.objects.filter(ativo=True).order_by("nome")
 
-    def clean_quantidade_m3(self):
-        qtd = self.cleaned_data.get("quantidade_m3")
-        if qtd is None or qtd <= Decimal("0.000"):
-            raise ValidationError("A quantidade deve ser maior que zero!")
-        return qtd
+        # A validação de "se é obrigatório" fica no clean (depende da modalidade)
+        # mas aqui já dá para ajudar quando estamos editando um item existente.
+        romaneio = getattr(self.instance, "romaneio", None)
+        if romaneio and romaneio.modalidade == "DETALHADO":
+            self.fields["quantidade_m3_total"].required = False
 
     def clean_valor_unitario(self):
         valor = self.cleaned_data.get("valor_unitario")
@@ -112,48 +107,52 @@ class ItemRomaneioForm(forms.ModelForm):
             raise ValidationError("O valor unitário deve ser maior que zero!")
         return valor
 
+    def clean_quantidade_m3_total(self):
+        """
+        SIMPLES: obrigatório > 0.
+        DETALHADO: pode ser 0/blank durante a digitação, mas no submit deve estar coerente.
+        Como no DETALHADO as unidades são salvas e os models recalculam, aceitamos 0 aqui,
+        mas a view/model vão recalcular após salvar unidades.
+        """
+        qtd = self.cleaned_data.get("quantidade_m3_total")
+        qtd = qtd if qtd is not None else Decimal("0.000")
+
+        romaneio = getattr(self.instance, "romaneio", None)
+        modalidade = romaneio.modalidade if romaneio else None
+
+        if modalidade == "SIMPLES" or modalidade is None:
+            if qtd <= Decimal("0.000"):
+                raise ValidationError("Informe a quantidade (m³) do item.")
+        return qtd
+
 
 class BaseItemRomaneioFormSet(BaseInlineFormSet):
     """
-    Valida itens conforme modalidade do romaneio:
-    - SIMPLES: comprimento/rodo podem ficar vazios
-    - DETALHADO: comprimento obrigatório (>0) e rodo obrigatório
+    - exige pelo menos 1 item não deletado
+    - NÃO bloqueia DETALHADO (agora as unidades já são implementadas)
     """
 
     def clean(self):
         super().clean()
 
-        # Se algum form já tem erro individual, não duplica erros aqui
         if any(self.errors):
             return
 
-        modalidade = None
-        if self.instance and getattr(self.instance, "modalidade", None):
-            modalidade = self.instance.modalidade
+        valid_forms = [
+            f for f in self.forms
+            if getattr(f, "cleaned_data", None) and not f.cleaned_data.get("DELETE")
+        ]
+        if len(valid_forms) < 1:
+            raise ValidationError("O romaneio precisa ter pelo menos um item.")
 
-        # Em Create, instance ainda não tem modalidade salva.
-        # Então tentamos ler do POST via prefixo do formulário pai.
-        # (Se não achar, não bloqueia; o ideal é passar a modalidade via view para o formset se quiser 100% garantido.)
-        if modalidade is None and self.data:
-            # o RomaneioForm costuma ter prefix vazio, então o campo vira "modalidade"
-            modalidade = self.data.get("modalidade") or self.data.get("romaneio-modalidade")
-
-        if modalidade != "DETALHADO":
-            return
-
-        for form in self.forms:
-            if not hasattr(form, "cleaned_data"):
-                continue
-            if form.cleaned_data.get("DELETE"):
-                continue
-
-            comprimento = form.cleaned_data.get("comprimento")
-            rodo = (form.cleaned_data.get("rodo") or "").strip()
-
-            if comprimento is None or comprimento <= Decimal("0.00"):
-                form.add_error("comprimento", "Comprimento é obrigatório na modalidade Detalhado.")
-            if not rodo:
-                form.add_error("rodo", "Rôdo é obrigatório na modalidade Detalhado.")
+        # Opcional: você pode validar duplicidade de tipo_madeira por romaneio
+        tipos = []
+        for f in valid_forms:
+            tm = f.cleaned_data.get("tipo_madeira")
+            if tm:
+                tipos.append(tm.pk)
+        if len(tipos) != len(set(tipos)):
+            raise ValidationError("Não é permitido repetir o mesmo Tipo de Madeira no mesmo romaneio.")
 
 
 ItemRomaneioFormSet = inlineformset_factory(
@@ -161,7 +160,150 @@ ItemRomaneioFormSet = inlineformset_factory(
     model=ItemRomaneio,
     form=ItemRomaneioForm,
     formset=BaseItemRomaneioFormSet,
-    extra=0,          # <- sempre 1 linha ao criar
+    extra=0,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+)
+
+
+# ================= UNIDADE ROMANEIO =================
+class UnidadeRomaneioForm(forms.ModelForm):
+    """
+    Unidade (tora) do item.
+    """
+
+    class Meta:
+        model = UnidadeRomaneio
+        fields = [
+            "comprimento",
+            "rodo",
+            "desconto_1",
+            "desconto_2",
+            "quantidade_m3",
+        ]
+        widgets = {
+            "comprimento": forms.NumberInput(
+                attrs={
+                    "class": "form-control campo-detalhado campo-unidade",
+                    "step": "0.01",
+                    "min": "0.01",
+                    "placeholder": "Ex: 3.00",
+                    "inputmode": "decimal",
+                }
+            ),
+            "rodo": forms.NumberInput(
+                attrs={
+                    "class": "form-control campo-detalhado campo-unidade",
+                    "step": "0.01",
+                    "min": "0.01",
+                    "placeholder": "Ex: 40.00",
+                    "inputmode": "decimal",
+                }
+            ),
+            "desconto_1": forms.NumberInput(
+                attrs={
+                    "class": "form-control campo-detalhado campo-unidade",
+                    "step": "0.01",
+                    "min": "0.00",
+                    "placeholder": "0.00",
+                    "inputmode": "decimal",
+                }
+            ),
+            "desconto_2": forms.NumberInput(
+                attrs={
+                    "class": "form-control campo-detalhado campo-unidade",
+                    "step": "0.01",
+                    "min": "0.00",
+                    "placeholder": "0.00",
+                    "inputmode": "decimal",
+                }
+            ),
+            "quantidade_m3": forms.NumberInput(
+                attrs={
+                    "class": "form-control campo-unidade quantidade-m3",
+                    "step": "0.001",
+                    "min": "0.001",
+                    "placeholder": "0.000",
+                    "inputmode": "decimal",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not (self.instance and self.instance.pk):
+            self.fields["desconto_1"].initial = Decimal("0.00")
+            self.fields["desconto_2"].initial = Decimal("0.00")
+
+    def clean(self):
+        super().clean()
+
+        # Normaliza descontos vazios para 0.00
+        for field in ("desconto_1", "desconto_2"):
+            if self.cleaned_data.get(field) is None:
+                self.cleaned_data[field] = Decimal("0.00")
+
+        return self.cleaned_data
+
+    def clean_quantidade_m3(self):
+        qtd = self.cleaned_data.get("quantidade_m3")
+        if qtd is None or qtd <= Decimal("0.000"):
+            raise ValidationError("A quantidade deve ser maior que zero!")
+        return qtd
+
+
+class BaseUnidadeRomaneioFormSet(BaseInlineFormSet):
+    """
+    - exige pelo menos 1 unidade não deletada
+    - se DETALHADO: comprimento e rodo obrigatórios
+    """
+
+    def _get_modalidade(self):
+        # Quando existe instance, é o mais confiável
+        if self.instance and getattr(self.instance, "romaneio", None):
+            return self.instance.romaneio.modalidade
+
+        # Fallback: tenta buscar no POST (nem sempre existe, mas ajuda)
+        if self.data:
+            return self.data.get("modalidade")
+
+        return None
+
+    def clean(self):
+        super().clean()
+
+        if any(self.errors):
+            return
+
+        valid_forms = [
+            f for f in self.forms
+            if getattr(f, "cleaned_data", None) and not f.cleaned_data.get("DELETE")
+        ]
+        if len(valid_forms) < 1:
+            raise ValidationError("O item precisa ter pelo menos uma unidade.")
+
+        modalidade = self._get_modalidade()
+        if modalidade != "DETALHADO":
+            return
+
+        for form in valid_forms:
+            comprimento = form.cleaned_data.get("comprimento")
+            rodo = form.cleaned_data.get("rodo")
+
+            if comprimento is None or comprimento <= Decimal("0.00"):
+                form.add_error("comprimento", "Comprimento é obrigatório na modalidade Detalhado.")
+            if rodo is None or rodo <= Decimal("0.00"):
+                form.add_error("rodo", "Rôdo é obrigatório na modalidade Detalhado.")
+
+
+UnidadeRomaneioFormSet = inlineformset_factory(
+    parent_model=ItemRomaneio,
+    model=UnidadeRomaneio,
+    form=UnidadeRomaneioForm,
+    formset=BaseUnidadeRomaneioFormSet,
+    extra=0,
     can_delete=True,
     min_num=1,
     validate_min=True,

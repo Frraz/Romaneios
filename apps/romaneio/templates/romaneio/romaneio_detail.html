@@ -2,7 +2,7 @@
 {% block title %}Romaneio #{{ romaneio.numero_romaneio }}{% endblock %}
 
 {% block content %}
-<div class="card mx-auto shadow-sm" style="max-width: 1000px;">
+<div class="card mx-auto shadow-sm" style="max-width: 1100px;">
     <div class="card-header bg-primary text-white d-flex align-items-center gap-2 flex-wrap">
         <i class="fas fa-file-invoice me-1"></i>
 
@@ -30,44 +30,55 @@
     <div class="card-body">
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-4">
-                <strong>Nº Romaneio:</strong>
-                <span class="ms-1">{{ romaneio.numero_romaneio }}</span>
+                <div class="text-muted small">Nº Romaneio</div>
+                <div class="fw-semibold">{{ romaneio.numero_romaneio }}</div>
             </div>
 
             <div class="col-6 col-md-4">
-                <strong>Data:</strong>
-                <span class="ms-1">{{ romaneio.data_romaneio|date:"d/m/Y" }}</span>
+                <div class="text-muted small">Data</div>
+                <div class="fw-semibold">{{ romaneio.data_romaneio|date:"d/m/Y" }}</div>
             </div>
 
             <div class="col-12 col-md-4">
-                <strong>Cliente:</strong>
-                <span class="ms-1">{{ romaneio.cliente.nome }}</span>
+                <div class="text-muted small">Cliente</div>
+                <div class="fw-semibold">{{ romaneio.cliente.nome }}</div>
             </div>
 
             <div class="col-12 col-md-4">
-                <strong>Motorista:</strong>
-                <span class="ms-1">{{ romaneio.motorista.nome|default:"—" }}</span>
+                <div class="text-muted small">Motorista</div>
+                <div class="fw-semibold">{{ romaneio.motorista.nome|default:"—" }}</div>
             </div>
 
             <div class="col-6 col-md-4">
-                <strong>Total m³:</strong>
-                <span class="ms-1">{{ romaneio.m3_total|floatformat:3 }}</span>
+                <div class="text-muted small">Total m³</div>
+                <div class="fw-semibold">{{ romaneio.m3_total|floatformat:3 }}</div>
             </div>
 
             <div class="col-6 col-md-4">
-                <strong>Valor Bruto:</strong>
-                <span class="ms-1 fw-bold">R$ {{ romaneio.valor_bruto|floatformat:2 }}</span>
+                <div class="text-muted small">Valor Bruto</div>
+                <div class="fw-bold">R$ {{ romaneio.valor_bruto|floatformat:2 }}</div>
             </div>
 
             <div class="col-12 col-md-4">
-                <strong>Valor Líquido:</strong>
-                <span class="ms-1 text-success fw-bold">R$ {{ romaneio.valor_total|floatformat:2 }}</span>
+                <div class="text-muted small">Valor Líquido</div>
+                <div class="text-success fw-bold">R$ {{ romaneio.valor_total|floatformat:2 }}</div>
             </div>
         </div>
 
         <hr>
 
-        <h5 class="mb-3"><i class="fas fa-list me-2"></i>Itens do Romaneio</h5>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h5 class="m-0"><i class="fas fa-list me-2"></i>Itens do Romaneio</h5>
+
+            <div class="btn-group">
+                <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-outline-secondary btn-sm" title="Voltar para lista">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <a href="{% url 'romaneio:romaneio_update' romaneio.id %}" class="btn btn-primary btn-sm" title="Editar romaneio">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+            </div>
+        </div>
 
         <div class="table-responsive mb-3">
             <table class="table table-bordered table-hover align-middle">
@@ -77,7 +88,7 @@
 
                         {% if romaneio.modalidade == "DETALHADO" %}
                             <th class="text-end">Comp.</th>
-                            <th>Rôdo</th>
+                            <th class="text-end">Rôdo</th>
                         {% endif %}
 
                         <th class="text-end">Qtd. (m³)</th>
@@ -88,18 +99,16 @@
                 <tbody>
                     {% for item in itens %}
                     <tr>
-                        <td>{{ item.tipo_madeira.nome }}</td>
+                        <td class="fw-semibold">{{ item.tipo_madeira.nome }}</td>
 
                         {% if romaneio.modalidade == "DETALHADO" %}
-                            <td class="text-end">
-                                {{ item.comprimento|default:"—" }}
-                            </td>
-                            <td>
-                                {{ item.rodo|default:"—" }}
-                            </td>
+                            <td class="text-end">{{ item.comprimento|default:"—" }}</td>
+                            <td class="text-end">{{ item.rodo|default:"—" }}</td>
                         {% endif %}
 
-                        <td class="text-end">{{ item.quantidade_m3|floatformat:3 }}</td>
+                        {# seu model mudou: agora é quantidade_m3_total #}
+                        <td class="text-end">{{ item.quantidade_m3_total|floatformat:3 }}</td>
+
                         <td class="text-end">R$ {{ item.valor_unitario|floatformat:2 }}</td>
                         <td class="text-end fw-bold text-success">R$ {{ item.valor_total|floatformat:2 }}</td>
                     </tr>
@@ -117,33 +126,32 @@
         <!-- Totais do romaneio -->
         <div class="row mb-3 g-2">
             <div class="col-md-4">
-                <span class="badge bg-primary fs-6 w-100 text-start">
-                    <i class="fas fa-cube"></i> Total m³: {{ romaneio.m3_total|floatformat:3 }}
-                </span>
+                <div class="p-3 border rounded bg-light">
+                    <div class="text-muted small"><i class="fas fa-cube"></i> Total m³</div>
+                    <div class="fw-bold">{{ romaneio.m3_total|floatformat:3 }}</div>
+                </div>
             </div>
 
             <div class="col-md-4">
-                <span class="badge bg-secondary fs-6 w-100 text-start">
-                    <i class="fas fa-dollar-sign"></i> Bruto: R$ {{ romaneio.valor_bruto|floatformat:2 }}
-                </span>
+                <div class="p-3 border rounded bg-light">
+                    <div class="text-muted small"><i class="fas fa-dollar-sign"></i> Bruto</div>
+                    <div class="fw-bold">R$ {{ romaneio.valor_bruto|floatformat:2 }}</div>
+                </div>
             </div>
 
             <div class="col-md-4">
-                <span class="badge bg-success fs-6 w-100 text-start">
-                    <i class="fas fa-dollar-sign"></i> Líquido: R$ {{ romaneio.valor_total|floatformat:2 }}
-                </span>
+                <div class="p-3 border rounded bg-light">
+                    <div class="text-muted small"><i class="fas fa-dollar-sign"></i> Líquido</div>
+                    <div class="fw-bold text-success">R$ {{ romaneio.valor_total|floatformat:2 }}</div>
+                </div>
             </div>
         </div>
 
-        <!-- Ações rápidas -->
-        <div class="d-flex justify-content-between mt-4 flex-wrap">
-            <a href="{% url 'romaneio:romaneio_list' %}" class="btn btn-secondary mb-2 mb-sm-0">
-                <i class="fas fa-arrow-left"></i> Voltar
-            </a>
-            <a href="{% url 'romaneio:romaneio_update' romaneio.id %}" class="btn btn-primary">
-                <i class="fas fa-edit"></i> Editar Romaneio
-            </a>
+        {% if romaneio.desconto and romaneio.desconto != 0 %}
+        <div class="alert alert-info py-2">
+            <strong>Desconto aplicado:</strong> {{ romaneio.desconto|floatformat:2 }}% sobre o valor bruto.
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
