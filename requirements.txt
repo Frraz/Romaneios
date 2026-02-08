@@ -1,34 +1,47 @@
 # MadereiraJD - requirements.txt
-# Python: 3.11+
+#
+# Runtime target: Ubuntu VPS
+# Python: 3.11+ (você está usando 3.12 na VPS)
 # Django: 4.2 (LTS)
 
-# --- Core ---
+# =========================
+# Core
+# =========================
 Django==4.2.27
 asgiref>=3.6,<4
+python-dotenv==1.2.1
 sqlparse==0.5.5
 tzdata==2025.3
-python-dotenv==1.2.1
 
-# --- Database (PostgreSQL) ---
+# =========================
+# Database (PostgreSQL)
+# =========================
+# Em produção, o ideal é "psycopg2" (non-binary). Se quiser manter simplicity, ok.
 psycopg2-binary==2.9.11
 
-# --- Django UI helpers ---
+# =========================
+# Django template helpers
+# =========================
 django-widget-tweaks==1.5.1
 
-# --- Reports / exports ---
+# =========================
+# Exports / Reports
+# =========================
 openpyxl==3.1.5
 
-# PDF (HTML -> PDF). On Ubuntu, you must also install system libs:
+# PDF (HTML -> PDF) - WeasyPrint
+# Dependências do SO (Ubuntu):
 #   sudo apt-get update
-#   sudo apt-get install -y libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi8 shared-mime-info
+#   sudo apt-get install -y \
+#     libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+#     libffi8 shared-mime-info fonts-dejavu-core fontconfig
 weasyprint==62.3
 
-# PDF (pure Python fallback / alternative renderer)
-reportlab==4.2.0
-
+# Pins para evitar incompatibilidades (ex: "'super' object has no attribute 'transform'")
+pydyf==0.10.0
 tinycss2==1.3.0
 cssselect2==0.7.0
 fonttools==4.55.3
-pydyf==0.10.0
 
-
+# PDF fallback (pure python)
+reportlab==4.2.0

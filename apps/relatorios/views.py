@@ -149,82 +149,254 @@ def ficha_romaneios_export(request):
     return response
 
 
+@login_required
 def romaneio_export_excel(request, romaneio_id: int):
     """
-    Exporta UM romaneio para Excel (.xlsx).
-    Inclui um cabeçalho resumo (Cliente, Nº, Data, Tipo, M³, Total)
-    e também a lista de itens (tipo madeira, qtd, valores).
+    Exporta UM romaneio para Excel (.xlsx) com layout profissional:
+    - Cabeçalho estilizado
+    - Resumo
+    - Itens com formatação numérica/moeda, filtro, freeze panes e total
+    - (Se DETALHADO) uma aba adicional com Unidades (Toras)
     """
     from io import BytesIO
 
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
 
     romaneio = (
         Romaneio.objects
-        .select_related("cliente", "motorista")
-        .prefetch_related("itens__tipo_madeira")
+        .select_related("cliente", "motorista", "usuario_cadastro")
+        .prefetch_related("itens__tipo_madeira", "itens__unidades")
         .get(pk=romaneio_id)
     )
 
+    # ===== Helpers de estilo =====
+    brand_fill = PatternFill("solid", fgColor="246B29")   # verde
+    head_fill = PatternFill("solid", fgColor="EEF3EF")    # cabeçalho tabela (claro)
+    zebra_fill = PatternFill("solid", fgColor="F7F7F7")   # linhas alternadas
+    total_fill = PatternFill("solid", fgColor="FFF3CD")   # total (amarelo claro)
+
+    white_bold = Font(color="FFFFFF", bold=True, size=14)
+    title_font = Font(bold=True, size=16, color="FFFFFF")
+    bold = Font(bold=True)
+    small_muted = Font(color="666666", size=10)
+
+    thin = Side(style="thin", color="D0D7DE")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def set_col_width(ws, widths: dict[int, float]):
+        for col_idx, width in widths.items():
+            ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    def apply_border_range(ws, min_row, max_row, min_col, max_col):
+        for r in range(min_row, max_row + 1):
+            for c in range(min_col, max_col + 1):
+                ws.cell(row=r, column=c).border = border
+
+    # ===== Workbook =====
     wb = Workbook()
     ws = wb.active
     ws.title = f"Romaneio {romaneio.numero_romaneio}"
 
-    bold = Font(bold=True)
-    title_font = Font(bold=True, size=14)
-    header_fill = PatternFill("solid", fgColor="F2F2F2")
-
-    # Título
-    ws["A1"] = f"Romaneio Nº {romaneio.numero_romaneio}"
+    # ===== Cabeçalho =====
+    ws.merge_cells("A1:F1")
+    ws["A1"] = f"ROMANEIO Nº {romaneio.numero_romaneio}"
     ws["A1"].font = title_font
-    ws.merge_cells("A1:D1")
+    ws["A1"].fill = brand_fill
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 28
 
-    # Resumo (colunas solicitadas)
-    ws["A3"] = "Cliente"
-    ws["B3"] = romaneio.cliente.nome if romaneio.cliente else ""
-    ws["A4"] = "Nº de Romaneio"
-    ws["B4"] = romaneio.numero_romaneio
-    ws["A5"] = "Data Romaneio"
-    ws["B5"] = romaneio.data_romaneio.strftime("%d/%m/%Y") if romaneio.data_romaneio else ""
-    ws["A6"] = "Tipo"
-    ws["B6"] = romaneio.get_tipo_romaneio_display()
-    ws["A7"] = "M³"
-    ws["B7"] = float(romaneio.m3_total or 0)
-    ws["A8"] = "Total R$"
-    ws["B8"] = float(romaneio.valor_total or 0)
+    ws.merge_cells("A2:F2")
+    ws["A2"] = (
+        f"Cliente: {romaneio.cliente.nome if romaneio.cliente else ''}   |   "
+        f"Data: {romaneio.data_romaneio.strftime('%d/%m/%Y') if romaneio.data_romaneio else ''}   |   "
+        f"Tipo: {romaneio.get_tipo_romaneio_display()}   |   "
+        f"Modalidade: {romaneio.get_modalidade_display()}"
+    )
+    ws["A2"].font = Font(color="FFFFFF", bold=True, size=11)
+    ws["A2"].fill = brand_fill
+    ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[2].height = 20
 
-    for cell in ["A3", "A4", "A5", "A6", "A7", "A8"]:
-        ws[cell].font = bold
+    # ===== Resumo =====
+    # Bloco 2 colunas (Label / Valor)
+    ws["A4"] = "Resumo"
+    ws["A4"].font = Font(bold=True, size=12)
+    ws.merge_cells("A4:F4")
 
-    # Itens
-    start_row = 10
-    headers = ["Espécie", "Qtd (m³)", "Valor Unit. (R$/m³)", "Total (R$)"]
+    resumo = [
+        ("Cliente", romaneio.cliente.nome if romaneio.cliente else ""),
+        ("Motorista", romaneio.motorista.nome if romaneio.motorista else "—"),
+        ("Cadastrado por", (romaneio.usuario_cadastro.get_full_name() if romaneio.usuario_cadastro else "—")),
+        ("Cadastro em", romaneio.data_cadastro.strftime("%d/%m/%Y %H:%M") if getattr(romaneio, "data_cadastro", None) else "—"),
+        ("Atualização", romaneio.data_atualizacao.strftime("%d/%m/%Y %H:%M") if getattr(romaneio, "data_atualizacao", None) else "—"),
+        ("Total m³", float(romaneio.m3_total or 0)),
+        ("Valor Bruto (R$)", float(romaneio.valor_bruto or 0)),
+        ("Valor Líquido (R$)", float(romaneio.valor_total or 0)),
+    ]
+
+    r0 = 5
+    for i, (k, v) in enumerate(resumo):
+        row = r0 + i
+        ws["A" + str(row)] = k
+        ws["A" + str(row)].font = bold
+        ws["A" + str(row)].alignment = Alignment(horizontal="right")
+        ws["A" + str(row)].fill = PatternFill("solid", fgColor="F2F2F2")
+
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        cell_v = ws.cell(row=row, column=2, value=v)
+        cell_v.alignment = Alignment(horizontal="left")
+
+        # formatos
+        if k == "Total m³":
+            cell_v.number_format = "0.000"
+        if "R$" in k:
+            cell_v.number_format = '"R$" #,##0.00'
+
+    apply_border_range(ws, min_row=5, max_row=5 + len(resumo) - 1, min_col=1, max_col=6)
+
+    # ===== Tabela de itens =====
+    start_row = 5 + len(resumo) + 2  # espaço após resumo
+
+    ws["A" + str(start_row)] = "Itens do Romaneio"
+    ws["A" + str(start_row)].font = Font(bold=True, size=12)
+    ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=6)
+
+    header_row = start_row + 1
+    headers = ["Espécie", "Qtd (m³)", "Valor Unit. (R$/m³)", "Total Item (R$)"]
     for col_idx, text in enumerate(headers, start=1):
-        c = ws.cell(row=start_row, column=col_idx, value=text)
-        c.font = bold
-        c.fill = header_fill
-        c.alignment = Alignment(horizontal="center")
+        c = ws.cell(row=header_row, column=col_idx, value=text)
+        c.font = Font(bold=True, color="1F2937")
+        c.fill = head_fill
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = border
 
-    row = start_row + 1
-    for item in romaneio.itens.all():
-        ws.cell(row=row, column=1, value=(item.tipo_madeira.nome if item.tipo_madeira else ""))
-        ws.cell(row=row, column=2, value=float(item.quantidade_m3_total or 0))
-        ws.cell(row=row, column=3, value=float(item.valor_unitario or 0))
-        ws.cell(row=row, column=4, value=float(item.valor_total or 0))
+    ws.row_dimensions[header_row].height = 18
+
+    row = header_row + 1
+    for idx, item in enumerate(romaneio.itens.all(), start=1):
+        especie = item.tipo_madeira.nome if item.tipo_madeira else ""
+        qtd = float(item.quantidade_m3_total or 0)
+        vu = float(item.valor_unitario or 0)
+        vt = float(item.valor_total or 0)
+
+        ws.cell(row=row, column=1, value=especie)
+        ws.cell(row=row, column=2, value=qtd)
+        ws.cell(row=row, column=3, value=vu)
+        ws.cell(row=row, column=4, value=vt)
+
+        # estilos
+        for c in range(1, 5):
+            cell = ws.cell(row=row, column=c)
+            cell.border = border
+            cell.alignment = Alignment(vertical="center", horizontal="left" if c == 1 else "right")
+            if idx % 2 == 0:
+                cell.fill = zebra_fill
+
+        ws.cell(row=row, column=2).number_format = "0.000"
+        ws.cell(row=row, column=3).number_format = '"R$" #,##0.00'
+        ws.cell(row=row, column=4).number_format = '"R$" #,##0.00'
         row += 1
 
-    # Larguras
-    ws.column_dimensions["A"].width = 35
-    ws.column_dimensions["B"].width = 12
-    ws.column_dimensions["C"].width = 20
-    ws.column_dimensions["D"].width = 14
+    last_item_row = row - 1
 
+    # Linha total (com fórmula)
+    total_row = row + 1
+    ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
+    ws.cell(row=total_row, column=1).fill = total_fill
+    ws.cell(row=total_row, column=1).border = border
+
+    ws.cell(row=total_row, column=2, value=f"=SUM(B{header_row+1}:B{last_item_row})")
+    ws.cell(row=total_row, column=2).number_format = "0.000"
+    ws.cell(row=total_row, column=2).font = Font(bold=True)
+    ws.cell(row=total_row, column=2).alignment = Alignment(horizontal="right")
+    ws.cell(row=total_row, column=2).fill = total_fill
+    ws.cell(row=total_row, column=2).border = border
+
+    ws.cell(row=total_row, column=4, value=f"=SUM(D{header_row+1}:D{last_item_row})")
+    ws.cell(row=total_row, column=4).number_format = '"R$" #,##0.00'
+    ws.cell(row=total_row, column=4).font = Font(bold=True)
+    ws.cell(row=total_row, column=4).alignment = Alignment(horizontal="right")
+    ws.cell(row=total_row, column=4).fill = total_fill
+    ws.cell(row=total_row, column=4).border = border
+
+    # Preencher células intermediárias do total com estilo
+    for c in (3,):
+        cell = ws.cell(row=total_row, column=c, value="")
+        cell.fill = total_fill
+        cell.border = border
+
+    # Ajustes úteis do Excel
+    ws.freeze_panes = ws["A" + str(header_row + 1)]  # congela até o cabeçalho
+    ws.auto_filter.ref = f"A{header_row}:D{last_item_row}"
+
+    # Larguras
+    set_col_width(ws, {
+        1: 38,  # espécie
+        2: 12,  # qtd
+        3: 20,  # valor unit
+        4: 16,  # total
+        5: 2,
+        6: 2,
+    })
+
+    # Impressão (opcional, mas deixa profissional)
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.print_title_rows = f"{header_row}:{header_row}"
+
+    # ===== Aba opcional: Unidades (Toras) =====
+    if romaneio.modalidade == "DETALHADO":
+        ws2 = wb.create_sheet("Unidades (Toras)")
+        ws2.freeze_panes = "A2"
+
+        ws2.append(["Romaneio", romaneio.numero_romaneio, "Cliente", romaneio.cliente.nome if romaneio.cliente else ""])
+        ws2.append(["Item/Espécie", "Nº", "Comprimento (m)", "Rôdo (cm)", "Desc. 1 (cm)", "Desc. 2 (cm)", "Qtd (m³)"])
+
+        # Header style
+        for col in range(1, 8):
+            c = ws2.cell(row=2, column=col)
+            c.font = Font(bold=True)
+            c.fill = head_fill
+            c.border = border
+            c.alignment = Alignment(horizontal="center")
+
+        out_row = 3
+        for item in romaneio.itens.all():
+            especie = item.tipo_madeira.nome if item.tipo_madeira else ""
+            for idx, u in enumerate(item.unidades.all(), start=1):
+                ws2.cell(row=out_row, column=1, value=especie)
+                ws2.cell(row=out_row, column=2, value=idx)
+                ws2.cell(row=out_row, column=3, value=float(u.comprimento or 0))
+                ws2.cell(row=out_row, column=4, value=float(u.rodo or 0))
+                ws2.cell(row=out_row, column=5, value=float(u.desconto_1 or 0))
+                ws2.cell(row=out_row, column=6, value=float(u.desconto_2 or 0))
+                ws2.cell(row=out_row, column=7, value=float(u.quantidade_m3 or 0))
+
+                for col in range(1, 8):
+                    cell = ws2.cell(row=out_row, column=col)
+                    cell.border = border
+                    cell.alignment = Alignment(horizontal="left" if col == 1 else "right")
+                    if out_row % 2 == 0:
+                        cell.fill = zebra_fill
+
+                ws2.cell(row=out_row, column=3).number_format = "0.00"
+                ws2.cell(row=out_row, column=4).number_format = "0.00"
+                ws2.cell(row=out_row, column=5).number_format = "0.00"
+                ws2.cell(row=out_row, column=6).number_format = "0.00"
+                ws2.cell(row=out_row, column=7).number_format = "0.000"
+                out_row += 1
+
+        set_col_width(ws2, {1: 28, 2: 6, 3: 16, 4: 12, 5: 12, 6: 12, 7: 12})
+
+    # ===== Response =====
     output = BytesIO()
     wb.save(output)
     output.seek(0)
 
-    filename = f"romaneio_{romaneio.numero_romaneio}.xlsx"
+    filename = _safe_filename(f"romaneio_{romaneio.numero_romaneio}.xlsx")
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
