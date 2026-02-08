@@ -1,38 +1,11 @@
-# === Principais dependências do projeto MadereiraJD ===
-
-# Django core e suporte a ASGI
 Django==4.2.27
-asgiref>=3.6,<4      # >=3.6 recomendado para Django 4.2; já compatível com sua versão 3.11.0
-
-# Banco de dados PostgreSQL
-psycopg2-binary==2.9.11  # "psycopg2" puro para produção, esse para dev/prototipagem leve
-
-# Utilidade para variáveis de ambiente
+asgiref>=3.6,<4
+psycopg2-binary==2.9.11
 python-dotenv==1.2.1
-
-# Parser SQL usado pelo Django (geralmente dependência interna, mas ok declarar explicitamente)
 sqlparse==0.5.5
-
-# Localização de fuso-horário para sistemas sem pacotes de zona instalados
 tzdata==2025.3
+django-widget-tweaks==1.5.1
 
-# Componentes Django extra
-django-widget-tweaks==1.5.1  # para filtros no template, como add_class
-
-# === Dependências recomendadas para produção/desenvolvimento (opcional) ===
-
-# Gunicorn para servir Django em produção (Linux/Unix)
-# gunicorn==21.2.0
-
-# Cliente para enviar e-mails SMTP (para depuração local)
-# django-ses, django-anymail (caso use envio de email em produção)
-
-# Ferramentas de lint/teste/opcional:
-# black==24.2.0
-# flake8==7.0.0
-# coverage==7.4.0
-
-# === Observações ===
-# - Use um requirements-dev.txt separado para dependências exclusivas de desenvolvimento/testes.
-# - Fixe sempre as versões (como acima) para reprodutibilidade.
-# - Atualize regularmente! Use "pip list --outdated" para acompanhar.
+openpyxl==3.1.5
+weasyprint==62.3
+reportlab==4.2.0

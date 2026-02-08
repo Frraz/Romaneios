@@ -17,6 +17,7 @@
             </button>
         </form>
     </div>
+
     <div class="card-body">
         <!-- Filtros por período e cliente -->
         <form method="get" class="row gx-2 gy-2 mb-4">
@@ -78,22 +79,21 @@
             <table class="table table-striped align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Nº</th>
-                        <th>Data</th>
                         <th>Cliente</th>
-                        <th>Motorista</th>
+                        <th>Nº de Romaneio</th>
+                        <th>Data Romaneio</th>
                         <th>Tipo</th>
-                        <th class="text-end">m³</th>
-                        <th class="text-end">Valor</th>
+                        <th class="text-end">M³</th>
+                        <th class="text-end">Total R$</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for romaneio in romaneios %}
                     <tr>
+                        <td>{{ romaneio.cliente.nome }}</td>
                         <td>{{ romaneio.numero_romaneio }}</td>
                         <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
-                        <td>{{ romaneio.cliente.nome }}</td>
-                        <td>{{ romaneio.motorista.nome|default:"—" }}</td>
                         <td>
                             {% if romaneio.tipo_romaneio == "NORMAL" %}
                                 <span class="badge bg-primary">Normal</span>
@@ -101,10 +101,25 @@
                                 <span class="badge bg-warning text-dark">Com Frete</span>
                             {% endif %}
                         </td>
-                        <td class="text-end">
-                            {{ romaneio.m3_total|floatformat:3 }}
-                        </td>
+                        <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
                         <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
+
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações exportação">
+                                <a class="btn btn-outline-dark"
+                                   href="{% url 'relatorios:romaneio_export_pdf' romaneio.id %}"
+                                   target="_blank"
+                                   title="Exportar PDF (impressão)">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                                <a class="btn btn-outline-success"
+                                   href="{% url 'relatorios:romaneio_export_excel' romaneio.id %}"
+                                   target="_blank"
+                                   title="Exportar Excel">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </a>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -116,7 +131,6 @@
                 </tbody>
             </table>
         </div>
-        {# Dica: para detalhar os itens de cada romaneio (espécie, comp, etc), só pedir! #}
     </div>
 </div>
 {% endblock %}

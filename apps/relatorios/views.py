@@ -147,6 +147,117 @@ def ficha_romaneios_export(request):
     return response
 
 
+def romaneio_export_excel(request, romaneio_id: int):
+    """
+    Exporta UM romaneio para Excel (.xlsx).
+    Inclui um cabeçalho resumo (Cliente, Nº, Data, Tipo, M³, Total)
+    e também a lista de itens (tipo madeira, qtd, valores).
+    """
+    from io import BytesIO
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    romaneio = (
+        Romaneio.objects
+        .select_related("cliente", "motorista")
+        .prefetch_related("itens__tipo_madeira")
+        .get(pk=romaneio_id)
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Romaneio {romaneio.numero_romaneio}"
+
+    bold = Font(bold=True)
+    title_font = Font(bold=True, size=14)
+    header_fill = PatternFill("solid", fgColor="F2F2F2")
+
+    # Título
+    ws["A1"] = f"Romaneio Nº {romaneio.numero_romaneio}"
+    ws["A1"].font = title_font
+    ws.merge_cells("A1:D1")
+
+    # Resumo (colunas solicitadas)
+    ws["A3"] = "Cliente"
+    ws["B3"] = romaneio.cliente.nome if romaneio.cliente else ""
+    ws["A4"] = "Nº de Romaneio"
+    ws["B4"] = romaneio.numero_romaneio
+    ws["A5"] = "Data Romaneio"
+    ws["B5"] = romaneio.data_romaneio.strftime("%d/%m/%Y") if romaneio.data_romaneio else ""
+    ws["A6"] = "Tipo"
+    ws["B6"] = romaneio.get_tipo_romaneio_display()
+    ws["A7"] = "M³"
+    ws["B7"] = float(romaneio.m3_total or 0)
+    ws["A8"] = "Total R$"
+    ws["B8"] = float(romaneio.valor_total or 0)
+
+    for cell in ["A3", "A4", "A5", "A6", "A7", "A8"]:
+        ws[cell].font = bold
+
+    # Itens
+    start_row = 10
+    headers = ["Espécie", "Qtd (m³)", "Valor Unit. (R$/m³)", "Total (R$)"]
+    for col_idx, text in enumerate(headers, start=1):
+        c = ws.cell(row=start_row, column=col_idx, value=text)
+        c.font = bold
+        c.fill = header_fill
+        c.alignment = Alignment(horizontal="center")
+
+    row = start_row + 1
+    for item in romaneio.itens.all():
+        ws.cell(row=row, column=1, value=(item.tipo_madeira.nome if item.tipo_madeira else ""))
+        ws.cell(row=row, column=2, value=float(item.quantidade_m3_total or 0))
+        ws.cell(row=row, column=3, value=float(item.valor_unitario or 0))
+        ws.cell(row=row, column=4, value=float(item.valor_total or 0))
+        row += 1
+
+    # Larguras
+    ws.column_dimensions["A"].width = 35
+    ws.column_dimensions["B"].width = 12
+    ws.column_dimensions["C"].width = 20
+    ws.column_dimensions["D"].width = 14
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"romaneio_{romaneio.numero_romaneio}.xlsx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+
+def romaneio_export_pdf(request, romaneio_id):
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
+
+    romaneio = (
+        Romaneio.objects
+        .select_related("cliente", "motorista", "usuario_cadastro")
+        .prefetch_related("itens__tipo_madeira", "itens__unidades")
+        .get(pk=romaneio_id)
+    )
+    html_string = render_to_string(
+        "relatorios/romaneio_pdf.html",
+        {
+            "romaneio": romaneio,
+            "itens": romaneio.itens.all(),
+            "now": timezone.localtime(),
+            "request": request,
+        }
+    )
+    pdf_bytes = HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf()
+    filename = f"romaneio_{romaneio.numero_romaneio}.pdf"
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{filename}"'
+    return response
+
+
 class RelatorioMadeirasView(LoginRequiredMixin, TemplateView):
     template_name = "relatorios/ficha_madeiras.html"
 
