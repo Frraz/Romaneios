@@ -28,6 +28,7 @@
 
       --bg-soft: #f6f7f8;
       --bg-head: #eef3ef;
+      --bg-head-2: #f0f0fa;
     }
 
     html, body { padding: 0; margin: 0; }
@@ -153,11 +154,18 @@
     .num { text-align: right; white-space: nowrap; }
     .center { text-align: center; white-space: nowrap; }
 
-    .item-row { page-break-inside: avoid; }
-    .unidades-wrap { page-break-inside: avoid; }
+    /* Evitar quebra feia dentro do item/unidades */
+    tr.item-row { page-break-inside: avoid; }
+    tr.unidades-wrap { page-break-inside: avoid; }
+    .unidades-box { page-break-inside: avoid; }
 
     /* Zebra nas unidades para leitura */
+    table.unidades thead th { background: var(--bg-head-2); }
     table.unidades tbody tr:nth-child(even) td { background: #fafafa; }
+
+    /* Quando o PDF quebra página, repetir cabeçalho ajuda muito */
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
 
     .muted { color: var(--muted); }
 
@@ -262,16 +270,8 @@
     </table>
   </div>
 
-  <!-- Se você tiver campo observacoes no model, descomente e use.
-  {% if romaneio.observacoes %}
-    <div class="box">
-      <div class="label">Observações</div>
-      <div class="value" style="font-weight:400">{{ romaneio.observacoes }}</div>
-    </div>
-  {% endif %}
-  -->
-
   <h2>Itens do Romaneio</h2>
+
   <table class="tbl">
     <thead>
       <tr>
@@ -284,6 +284,7 @@
         {% endif %}
       </tr>
     </thead>
+
     <tbody>
       {% for item in itens %}
         <tr class="item-row">
@@ -299,44 +300,70 @@
         {% if romaneio.modalidade == "DETALHADO" and item.unidades.exists %}
           <tr class="unidades-wrap">
             <td colspan="5" style="padding:8px">
-              <div class="label" style="margin-bottom:6px">Unidades (Toras) - {{ item.tipo_madeira.nome }}</div>
+              <div class="label" style="margin-bottom:6px">
+                Unidades (Toras) — {{ item.tipo_madeira.nome }}
+              </div>
 
-              <table class="tbl unidades">
-                <thead>
-                  <tr>
-                    <th style="width:38px">#</th>
-                    <th class="num">Comprimento (m)</th>
-                    <th class="num">Rôdo (cm)</th>
-                    <th class="num">Desc. 1 (cm)</th>
-                    <th class="num">Desc. 2 (cm)</th>
-                    <th class="num">Qtd (m³)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for unidade in item.unidades.all %}
+              <div class="unidades-box">
+                <table class="tbl unidades">
+                  <thead>
                     <tr>
-                      <td class="center">{{ forloop.counter }}</td>
-                      <td class="num">{{ unidade.comprimento|default_if_none:"—"|floatformat:2 }}</td>
-                      <td class="num">{{ unidade.rodo|default_if_none:"—"|floatformat:2 }}</td>
-                      <td class="num">
-                        {% if unidade.desconto_1 and unidade.desconto_1 > 0 %}
-                          {{ unidade.desconto_1|floatformat:2 }}
-                        {% else %}—{% endif %}
-                      </td>
-                      <td class="num">
-                        {% if unidade.desconto_2 and unidade.desconto_2 > 0 %}
-                          {{ unidade.desconto_2|floatformat:2 }}
-                        {% else %}—{% endif %}
-                      </td>
-                      <td class="num"><b>{{ unidade.quantidade_m3|floatformat:3 }}</b></td>
+                      <th style="width:38px" class="center">#</th>
+                      <th class="num">Comprimento (m)</th>
+                      <th class="num">Rôdo (cm)</th>
+                      <th class="num">Desc. 1 (cm)</th>
+                      <th class="num">Desc. 2 (cm)</th>
+                      <th class="num">Qtd (m³)</th>
                     </tr>
-                  {% empty %}
-                    <tr>
-                      <td colspan="6" class="center muted">Sem toras registradas para este item.</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {% for unidade in item.unidades.all %}
+                      <tr>
+                        <td class="center">{{ forloop.counter }}</td>
+
+                        <td class="num">
+                          {% if unidade.comprimento is not None %}
+                            {{ unidade.comprimento|floatformat:2 }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td class="num">
+                          {% if unidade.rodo is not None %}
+                            {{ unidade.rodo|floatformat:2 }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td class="num">
+                          {% if unidade.desconto_1 and unidade.desconto_1 > 0 %}
+                            {{ unidade.desconto_1|floatformat:2 }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td class="num">
+                          {% if unidade.desconto_2 and unidade.desconto_2 > 0 %}
+                            {{ unidade.desconto_2|floatformat:2 }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+
+                        <td class="num"><b>{{ unidade.quantidade_m3|floatformat:3 }}</b></td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="6" class="center muted">Sem toras registradas para este item.</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </td>
           </tr>
         {% endif %}
