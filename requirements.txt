@@ -25,3 +25,7 @@ weasyprint==62.3
 
 # PDF (pure Python fallback / alternative renderer)
 reportlab==4.2.0
+
+tinycss2==1.3.0
+cssselect2==0.7.0
+fonttools==4.55.3
