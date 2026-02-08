@@ -3,256 +3,356 @@
 <head>
   <meta charset="utf-8" />
   <title>Romaneio Nº {{ romaneio.numero_romaneio }}</title>
+
   <style>
-    @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #232323; }
-    h1 { font-size: 20px; margin-bottom: 6px; }
-    h2 { font-size: 16px; margin-top: 18px; margin-bottom: 5px;}
-    .header {
-      border-bottom: 2px solid #246b29;
-      margin-bottom: 18px;
-      padding-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
+    /* ===== Página / impressão ===== */
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 10px;
+        color: #666;
+      }
     }
-    .header .codigo { color: #246b29; font-weight: bold; font-size: 18px; }
-    .badge {
-      color: #fff;
-      font-size: 11px;
-      background: #246b29;
-      border-radius: 12px;
-      padding: 2px 10px;
-      margin-right: 8px;
-      display: inline-block;
+
+    :root {
+      --brand: #246b29;
+      --brand-2: #3b4671;
+      --warning: #D8850D;
+
+      --text: #222;
+      --muted: #666;
+      --line: #cfd4dc;
+
+      --bg-soft: #f6f7f8;
+      --bg-head: #eef3ef;
+    }
+
+    html, body { padding: 0; margin: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* Evita orfãs/viúvas feias em PDF */
+    p, h1, h2, h3 { orphans: 3; widows: 3; }
+
+    /* ===== Cabeçalho ===== */
+    .doc-header {
+      border-bottom: 2px solid var(--brand);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+
+    .doc-header table { width: 100%; border-collapse: collapse; }
+    .doc-header td { vertical-align: bottom; }
+
+    .title {
+      font-size: 18px;
       font-weight: 700;
+      margin: 0;
+      line-height: 1.1;
     }
-    .badge-frete { background: #D8850D; color: #fff; }
-    .badge-normal { background: #246b29; }
-    .badge-detalhado { background: #3b4671; }
-    .badge-simples { background: #aaa; }
-    .badge-motorista { background: #aaa; }
-    .infos { margin-bottom: 12px; }
-    .infos table { font-size: 13px; width: 100%; border-collapse: collapse; }
-    .infos td {
-      padding: 2px 5px 2px 0;
-      vertical-align: middle;
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
     }
+
+    .badges { margin-top: 6px; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-right: 6px;
+      letter-spacing: .2px;
+    }
+    .badge-normal { background: var(--brand); }
+    .badge-com_frete { background: var(--warning); }
+    .badge-simples { background: #999; }
+    .badge-detalhado { background: var(--brand-2); }
+
+    .right { text-align: right; }
+
+    /* ===== Bloco de informações ===== */
+    .box {
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .info-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .info-grid td { padding: 4px 6px; }
+    .label { color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: 10px; }
+    .value { font-size: 12px; font-weight: 700; }
+
+    /* ===== Totais ===== */
     .totais {
-      display: flex;
-      gap: 36px;
-      margin-bottom: 18px;
-      margin-top: 4px;
-    }
-    .total-bloco {
-      background: #f6f7f6;
-      border: 1px solid #e1e1e1;
-      border-radius: 7px;
-      padding: 10px 20px;
-      min-width: 120px;
-      text-align: center;
-    }
-    .total-bloco .rotulo { color: #767676; font-size: 11px; }
-    .total-bloco .valor { font-weight: bold; font-size: 1.25em; }
-    table.itens, table.unidades {
       width: 100%;
       border-collapse: collapse;
       margin-top: 6px;
-      margin-bottom: 10px;
     }
-    table.itens th, table.unidades th {
-      background: #f0f0fa;
+    .totais td {
+      width: 33.33%;
+      padding: 0 6px;
     }
-    table.itens th, table.itens td, table.unidades th, table.unidades td {
-      border: 1px solid #c6c8ce;
-      font-size: 12px;
-      padding: 5px 6px;
-      vertical-align: middle;
+    .total-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
     }
-    table.itens th { font-weight: bold; }
-    table.unidades th { font-size:11px; }
-    .t-unidades {
-      font-size: 11px; color: #3662aa;
-      margin-bottom: 2px;
-      margin-top: 0;
+    .total-card .k { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .total-card .v { font-size: 16px; font-weight: 800; margin-top: 4px; }
+
+    /* ===== Seções ===== */
+    h2 {
+      font-size: 14px;
+      margin: 16px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--line);
     }
-    .obs {
-      background: #efefef;
-      border: 1px solid #e1e1e1;
-      border-radius: 5px;
-      padding: 7px;
-      margin: 10px 0 10px 0;
-      color: #313234;
-      font-size: 12px;
+
+    /* ===== Tabelas ===== */
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
     }
-    .footer {
-      border-top: 1px solid #ddd; margin-top: 14px; padding-top: 8px; font-size: 11px;
-      color: #888; text-align: right;
-    }
-    .meta-info {
+
+    table.tbl thead th {
+      background: var(--bg-head);
+      border: 1px solid var(--line);
+      padding: 6px;
       font-size: 11px;
-      color: #888;
-      margin-top: 16px;
+      text-align: left;
+      font-weight: 800;
     }
-    .data-impresso {
-      color: #246b29;
+
+    table.tbl tbody td {
+      border: 1px solid var(--line);
+      padding: 6px;
       font-size: 11px;
-      text-align: right;
-      margin-bottom: 4px;
+      vertical-align: top;
+    }
+
+    .num { text-align: right; white-space: nowrap; }
+    .center { text-align: center; white-space: nowrap; }
+
+    .item-row { page-break-inside: avoid; }
+    .unidades-wrap { page-break-inside: avoid; }
+
+    /* Zebra nas unidades para leitura */
+    table.unidades tbody tr:nth-child(even) td { background: #fafafa; }
+
+    .muted { color: var(--muted); }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--muted);
     }
   </style>
 </head>
-<body>
-  <div class="header">
-    <div>
-      <h1>
-        Romaneio Nº <span class="codigo">{{ romaneio.numero_romaneio }}</span>
-      </h1>
-      <span class="badge badge-{{ romaneio.tipo_romaneio|lower }}">
-        {% if romaneio.tipo_romaneio == "COM_FRETE" %}Com Frete{% else %}Normal{% endif %}
-      </span>
-      <span class="badge badge-{{ romaneio.modalidade|lower }}">
-        {{ romaneio.get_modalidade_display }}
-      </span>
-      {% if romaneio.motorista %}
-        <span class="badge badge-motorista">Motorista: {{ romaneio.motorista.nome }}</span>
-      {% endif %}
-    </div>
-    <div class="data-impresso">Impresso em {{ now|date:"d/m/Y H:i" }}</div>
-  </div>
 
-  <!-- Informações gerais -->
-  <div class="infos">
+<body>
+  <div class="doc-header">
     <table>
       <tr>
-        <td><b>Cliente:</b></td><td>{{ romaneio.cliente.nome }}</td>
-        <td><b>Data do Romaneio:</b></td><td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
-      </tr>
-      <tr>
-        <td><b>Modalidade:</b></td><td>{{ romaneio.get_modalidade_display }}</td>
-        <td><b>Nº de Itens:</b></td><td>{{ itens|length }}</td>
-      </tr>
-      <tr>
-        <td><b>Cadastrado por:</b></td>
         <td>
-          {{ romaneio.usuario_cadastro.get_full_name|default:romaneio.usuario_cadastro.username }}
+          <p class="title">Romaneio Nº {{ romaneio.numero_romaneio }}</p>
+          <div class="subtitle">
+            Emitido em {{ romaneio.data_romaneio|date:"d/m/Y" }} &nbsp;|&nbsp; Impresso em {{ now|date:"d/m/Y H:i" }}
+          </div>
+
+          <div class="badges">
+            <span class="badge badge-{{ romaneio.tipo_romaneio|lower }}">
+              {{ romaneio.get_tipo_romaneio_display }}
+            </span>
+            <span class="badge badge-{{ romaneio.modalidade|lower }}">
+              {{ romaneio.get_modalidade_display }}
+            </span>
+            {% if romaneio.motorista %}
+              <span class="badge" style="background:#666">Motorista: {{ romaneio.motorista.nome }}</span>
+            {% endif %}
+          </div>
         </td>
-        <td><b>Cadastro em:</b></td>
-        <td>
-          {{ romaneio.data_cadastro|date:"d/m/Y H:i" }}
+
+        <td class="right">
+          <div class="subtitle"><b>Cliente</b></div>
+          <div style="font-weight:800; font-size:13px">{{ romaneio.cliente.nome }}</div>
         </td>
       </tr>
     </table>
   </div>
 
-  <!-- Totais -->
-  <div class="totais">
-    <div class="total-bloco">
-      <div class="rotulo">Total m³</div>
-      <div class="valor">{{ romaneio.m3_total|floatformat:3 }}</div>
-    </div>
-    <div class="total-bloco">
-      <div class="rotulo">Valor bruto</div>
-      <div class="valor">R$ {{ romaneio.valor_bruto|floatformat:2 }}</div>
-    </div>
-    <div class="total-bloco">
-      <div class="rotulo">Valor líquido</div>
-      <div class="valor">R$ {{ romaneio.valor_total|floatformat:2 }}</div>
-    </div>
+  <div class="box">
+    <table class="info-grid">
+      <tr>
+        <td>
+          <div class="label">Cliente</div>
+          <div class="value">{{ romaneio.cliente.nome }}</div>
+        </td>
+        <td>
+          <div class="label">Data do Romaneio</div>
+          <div class="value">{{ romaneio.data_romaneio|date:"d/m/Y" }}</div>
+        </td>
+        <td>
+          <div class="label">Itens</div>
+          <div class="value">{{ itens|length }}</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="label">Cadastrado por</div>
+          <div class="value">
+            {% if romaneio.usuario_cadastro %}
+              {{ romaneio.usuario_cadastro.get_full_name|default:romaneio.usuario_cadastro.username }}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="label">Cadastro em</div>
+          <div class="value">{{ romaneio.data_cadastro|date:"d/m/Y H:i" }}</div>
+        </td>
+        <td>
+          <div class="label">Atualização</div>
+          <div class="value">{{ romaneio.data_atualizacao|date:"d/m/Y H:i" }}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table class="totais">
+      <tr>
+        <td>
+          <div class="total-card">
+            <div class="k">Total m³</div>
+            <div class="v">{{ romaneio.m3_total|floatformat:3 }}</div>
+          </div>
+        </td>
+        <td>
+          <div class="total-card">
+            <div class="k">Valor bruto</div>
+            <div class="v">R$ {{ romaneio.valor_bruto|floatformat:2 }}</div>
+          </div>
+        </td>
+        <td>
+          <div class="total-card">
+            <div class="k">Valor líquido</div>
+            <div class="v">R$ {{ romaneio.valor_total|floatformat:2 }}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
   </div>
 
-  <!-- OBSERVAÇÕES -->
+  <!-- Se você tiver campo observacoes no model, descomente e use.
   {% if romaneio.observacoes %}
-    <div class="obs">
-      <b>Observações:</b> {{ romaneio.observacoes }}
+    <div class="box">
+      <div class="label">Observações</div>
+      <div class="value" style="font-weight:400">{{ romaneio.observacoes }}</div>
     </div>
   {% endif %}
+  -->
 
-  <!-- ITENS DO ROMANEIO -->
   <h2>Itens do Romaneio</h2>
-  <table class="itens">
+  <table class="tbl">
     <thead>
       <tr>
         <th>Espécie</th>
-        <th style="text-align:right">Qtd (m³)</th>
-        <th style="text-align:right">Valor Unit. (R$/m³)</th>
-        <th style="text-align:right">Total (R$)</th>
-        {% if romaneio.modalidade == 'DETALHADO' %}
-        <th style="text-align:center">Unidades</th>
+        <th class="num">Qtd (m³)</th>
+        <th class="num">Valor Unit. (R$/m³)</th>
+        <th class="num">Total (R$)</th>
+        {% if romaneio.modalidade == "DETALHADO" %}
+          <th class="center">Unidades</th>
         {% endif %}
       </tr>
     </thead>
     <tbody>
       {% for item in itens %}
-      <tr>
-        <td>{{ item.tipo_madeira.nome }}</td>
-        <td style="text-align:right">{{ item.quantidade_m3_total|floatformat:3 }}</td>
-        <td style="text-align:right">R$ {{ item.valor_unitario|floatformat:2 }}</td>
-        <td style="text-align:right">R$ {{ item.valor_total|floatformat:2 }}</td>
-        {% if romaneio.modalidade == 'DETALHADO' %}
-          <td style="text-align:center">
-            {{ item.unidades.count }} unidade{{ item.unidades.count|pluralize }}
-          </td>
-        {% endif %}
-      </tr>
-
-      {% if romaneio.modalidade == 'DETALHADO' and item.unidades.exists %}
-        <tr>
-          <td colspan="5" style="background:#f4f6fa">
-            <div class="t-unidades"><b>Unidades (toras):</b></div>
-            <table class="unidades">
-              <thead>
-                <tr>
-                  <th>Nº</th>
-                  <th>Comprimento (m)</th>
-                  <th>Rôdo (cm)</th>
-                  <th>Desconto 1 (cm)</th>
-                  <th>Desconto 2 (cm)</th>
-                  <th>Qtd. (m³)</th>
-                </tr>
-              </thead>
-              <tbody>
-              {% for unidade in item.unidades.all %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ unidade.comprimento|floatformat:2 }}</td>
-                  <td>{{ unidade.rodo|floatformat:2 }}</td>
-                  <td>
-                    {% if unidade.desconto_1 %}
-                      {{ unidade.desconto_1|floatformat:2 }}
-                    {% else %}—{% endif %}
-                  </td>
-                  <td>
-                    {% if unidade.desconto_2 %}
-                      {{ unidade.desconto_2|floatformat:2 }}
-                    {% else %}—{% endif %}
-                  </td>
-                  <td>{{ unidade.quantidade_m3|floatformat:3 }}</td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="6"><span style="color:#888">Sem toras registradas neste item.</span></td>
-                </tr>
-              {% endfor %}
-              </tbody>
-            </table>
-          </td>
+        <tr class="item-row">
+          <td><b>{{ item.tipo_madeira.nome }}</b></td>
+          <td class="num">{{ item.quantidade_m3_total|floatformat:3 }}</td>
+          <td class="num">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+          <td class="num"><b>R$ {{ item.valor_total|floatformat:2 }}</b></td>
+          {% if romaneio.modalidade == "DETALHADO" %}
+            <td class="center">{{ item.unidades.count }}</td>
+          {% endif %}
         </tr>
-      {% endif %}
+
+        {% if romaneio.modalidade == "DETALHADO" and item.unidades.exists %}
+          <tr class="unidades-wrap">
+            <td colspan="5" style="padding:8px">
+              <div class="label" style="margin-bottom:6px">Unidades (Toras) - {{ item.tipo_madeira.nome }}</div>
+
+              <table class="tbl unidades">
+                <thead>
+                  <tr>
+                    <th style="width:38px">#</th>
+                    <th class="num">Comprimento (m)</th>
+                    <th class="num">Rôdo (cm)</th>
+                    <th class="num">Desc. 1 (cm)</th>
+                    <th class="num">Desc. 2 (cm)</th>
+                    <th class="num">Qtd (m³)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for unidade in item.unidades.all %}
+                    <tr>
+                      <td class="center">{{ forloop.counter }}</td>
+                      <td class="num">{{ unidade.comprimento|default_if_none:"—"|floatformat:2 }}</td>
+                      <td class="num">{{ unidade.rodo|default_if_none:"—"|floatformat:2 }}</td>
+                      <td class="num">
+                        {% if unidade.desconto_1 and unidade.desconto_1 > 0 %}
+                          {{ unidade.desconto_1|floatformat:2 }}
+                        {% else %}—{% endif %}
+                      </td>
+                      <td class="num">
+                        {% if unidade.desconto_2 and unidade.desconto_2 > 0 %}
+                          {{ unidade.desconto_2|floatformat:2 }}
+                        {% else %}—{% endif %}
+                      </td>
+                      <td class="num"><b>{{ unidade.quantidade_m3|floatformat:3 }}</b></td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="6" class="center muted">Sem toras registradas para este item.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        {% endif %}
 
       {% empty %}
         <tr>
-          <td colspan="{% if romaneio.modalidade == 'DETALHADO' %}5{% else %}4{% endif %}" style="text-align:center; color:#bbb">
-            Nenhum item neste romaneio.
+          <td colspan="{% if romaneio.modalidade == "DETALHADO" %}5{% else %}4{% endif %}" class="center muted">
+            Nenhum item registrado.
           </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <div class="meta-info">
-    Esta via é para conferência.<br>
-    <b>Sistema:</b> MadereiraJD &mdash; <b>Gerado em:</b> {{ now|date:"d/m/Y H:i" }}
+  <div class="footer-note">
+    Documento gerado automaticamente pelo sistema MadereiraJD.
   </div>
 </body>
 </html>

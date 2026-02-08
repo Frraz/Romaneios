@@ -1,11 +1,27 @@
+# MadereiraJD - requirements.txt
+# Python: 3.11+
+# Django: 4.2 (LTS)
+
+# --- Core ---
 Django==4.2.27
 asgiref>=3.6,<4
-psycopg2-binary==2.9.11
-python-dotenv==1.2.1
 sqlparse==0.5.5
 tzdata==2025.3
+python-dotenv==1.2.1
+
+# --- Database (PostgreSQL) ---
+psycopg2-binary==2.9.11
+
+# --- Django UI helpers ---
 django-widget-tweaks==1.5.1
 
+# --- Reports / exports ---
 openpyxl==3.1.5
+
+# PDF (HTML -> PDF). On Ubuntu, you must also install system libs:
+#   sudo apt-get update
+#   sudo apt-get install -y libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi8 shared-mime-info
 weasyprint==62.3
+
+# PDF (pure Python fallback / alternative renderer)
 reportlab==4.2.0
