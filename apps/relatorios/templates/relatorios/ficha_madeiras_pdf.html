@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Ficha de Madeiras {{ mes }}/{{ ano }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 10px;
+        color: #666;
+      }
+    }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; }
+    .header { border-bottom: 2px solid #246b29; padding-bottom: 8px; margin-bottom: 12px; }
+    .title { font-size: 16px; font-weight: 800; margin: 0; }
+    .sub { color: #666; font-size: 11px; margin-top: 2px; }
+
+    .totais { margin: 10px 0 12px 0; font-size: 12px; }
+    .totais b { color: #246b29; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cfd4dc; padding: 6px; font-size: 11px; }
+    th { background: #eef3ef; text-align: left; }
+    .num { text-align: right; white-space: nowrap; }
+    .center { text-align: center; white-space: nowrap; }
+    thead { display: table-header-group; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p class="title">Ficha de Madeiras (Detalhado) — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
+    <div class="sub">
+      Cliente: <b>{{ cliente_nome }}</b> &nbsp;|&nbsp;
+      Gerado em: {{ now|date:"d/m/Y H:i" }}
+    </div>
+  </div>
+
+  <div class="totais">
+    Total m³: <b>{{ total_m3|floatformat:3 }}</b> &nbsp;&nbsp;
+    Total (R$): <b>R$ {{ total_itens|floatformat:2 }}</b>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Nº</th>
+        <th>Tipo Madeira</th>
+        <th class="center">Tipo</th>
+        <th class="num">Valor Unit.</th>
+        <th class="num">M³</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in rows %}
+        <tr>
+          <td>{{ item.romaneio.data_romaneio|date:"d/m/Y" }}</td>
+          <td class="center">{{ item.romaneio.numero_romaneio }}</td>
+          <td>{{ item.tipo_madeira.nome }}</td>
+          <td class="center">
+            {% if item.romaneio.tipo_romaneio == "COM_FRETE" %}Com frete{% else %}Normal{% endif %}
+          </td>
+          <td class="num">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+          <td class="num">{{ item.quantidade_m3_total|floatformat:3 }}</td>
+          <td class="num">R$ {{ item.valor_total|floatformat:2 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="center" style="color:#888">Nenhum dado encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
