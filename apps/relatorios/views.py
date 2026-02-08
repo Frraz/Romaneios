@@ -1,24 +1,20 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime
+import re
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import ListView, TemplateView
 
 from apps.cadastros.models import Cliente
 from apps.financeiro.models import Pagamento
 from apps.romaneio.models import ItemRomaneio, Romaneio
-import re
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
-from django.template.loader import render_to_string
-from weasyprint import HTML
-from apps.romaneio.models import Romaneio
-
 
 def get_mes_ano(request):
     """
@@ -238,19 +234,23 @@ def romaneio_export_excel(request, romaneio_id: int):
 
 
 def _safe_filename(value: str) -> str:
-    value = value.strip()
+    value = (value or "").strip()
     value = re.sub(r"[^A-Za-z0-9._-]+", "_", value)
     return value or "arquivo"
-
 
 
 @login_required
 def romaneio_export_pdf(request, romaneio_id: int):
     """
-    Exporta UM romaneio para PDF (impressão) usando WeasyPrint (ideal em Ubuntu VPS).
+    Exporta UM romaneio para PDF (impressão) usando WeasyPrint.
+    Recomendado para produção em Ubuntu VPS.
     """
     romaneio = get_object_or_404(
-        Romaneio.objects.select_related("cliente", "motorista", "usuario_cadastro").prefetch_related(
+        Romaneio.objects.select_related(
+            "cliente",
+            "motorista",
+            "usuario_cadastro",
+        ).prefetch_related(
             "itens__tipo_madeira",
             "itens__unidades",
         ),
@@ -259,22 +259,35 @@ def romaneio_export_pdf(request, romaneio_id: int):
 
     context = {
         "romaneio": romaneio,
-        # importante: usa a lista já prefetched, e garante ordem estável
         "itens": list(romaneio.itens.all()),
         "now": timezone.localtime(),
     }
 
     html_string = render_to_string("relatorios/romaneio_pdf.html", context)
-
-    # base_url é crucial para resolver URLs relativas (logo, css, etc.)
     base_url = request.build_absolute_uri("/")
 
-    pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf()
+    try:
+        from weasyprint import HTML  # import local (mais robusto no deploy)
+    except Exception as exc:
+        # Retorna erro legível (e evita 500 "cego")
+        return HttpResponse(
+            f"WeasyPrint não está disponível neste servidor. Erro: {exc}",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    try:
+        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf()
+    except Exception as exc:
+        # Ajuda MUITO no deploy: você vê o erro no response/log
+        return HttpResponse(
+            f"Falha ao gerar PDF. Erro: {exc}",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
 
     filename = _safe_filename(f"romaneio_{romaneio.numero_romaneio}.pdf")
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-
-    # inline abre no navegador; troque para attachment se quiser sempre baixar
     response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
 

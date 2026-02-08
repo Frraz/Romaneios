@@ -11,7 +11,7 @@ urlpatterns = [
     path('ficha-romaneios/', views.RelatorioRomaneiosView.as_view(), name='ficha_romaneios'),
     path('ficha-romaneios/export/', views.ficha_romaneios_export, name='ficha_romaneios_export'),
 
-    # Export por romaneio (NOVO)
+    # Export por romaneio
     path('romaneios/<int:romaneio_id>/export/pdf/', views.romaneio_export_pdf, name='romaneio_export_pdf'),
     path('romaneios/<int:romaneio_id>/export/excel/', views.romaneio_export_excel, name='romaneio_export_excel'),
 
@@ -23,8 +23,4 @@ urlpatterns = [
 
     # Relatório de saldo dos clientes
     path('saldo-clientes/', views.RelatorioSaldoClientesView.as_view(), name='saldo_clientes'),
-
-    # Export por romaneio
-    path('romaneios/<int:romaneio_id>/export/pdf/', views.romaneio_export_pdf, name='romaneio_export_pdf'),
-    path('romaneios/<int:romaneio_id>/export/excel/', views.romaneio_export_excel, name='romaneio_export_excel'),
 ]
