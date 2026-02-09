@@ -612,6 +612,14 @@ def romaneio_export_pdf(request, romaneio_id: int):
         pk=romaneio_id,
     )
 
+    # Garante consistência dos dados antes de imprimir (SIMPLES e DETALHADO)
+    # - SIMPLES: item.atualizar_totais usa quantidade_m3_total informada
+    # - DETALHADO: item.atualizar_totais soma unidades
+    for item in romaneio.itens.all():
+        item.atualizar_totais(save=True, atualizar_romaneio=False)
+
+    romaneio.atualizar_totais(save=True)
+
     context = {
         "romaneio": romaneio,
         "itens": list(romaneio.itens.all()),
