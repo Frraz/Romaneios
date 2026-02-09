@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Sum
 
@@ -14,7 +14,14 @@ VALOR_STEP = Decimal("0.01")
 
 
 class Romaneio(models.Model):
-    """Romaneio único (Simples/Detalhado)."""
+    """
+    Romaneio único (Simples/Detalhado).
+
+    Totais:
+      - valor_bruto: soma dos itens (sem desconto)
+      - valor_total: valor líquido após desconto do romaneio
+      - m3_total: soma do m³ dos itens
+    """
 
     TIPO_ROMANEIO_CHOICES = [
         ("NORMAL", "Normal"),
@@ -28,6 +35,7 @@ class Romaneio(models.Model):
 
     numero_romaneio = models.CharField(max_length=20, unique=True, db_index=True)
     data_romaneio = models.DateField(db_index=True)
+
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name="romaneios")
     motorista = models.ForeignKey(
         Motorista,
@@ -39,6 +47,16 @@ class Romaneio(models.Model):
 
     tipo_romaneio = models.CharField(max_length=15, choices=TIPO_ROMANEIO_CHOICES, default="NORMAL")
     modalidade = models.CharField(max_length=10, choices=MODALIDADE_CHOICES, default="SIMPLES")
+
+    # Desconto em percentual (0 a 100). Se você já tem esse campo no banco com outro nome,
+    # ajuste o nome aqui (e no form/template).
+    desconto = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00")), MaxValueValidator(Decimal("100.00"))],
+        help_text="Percentual de desconto aplicado sobre o valor bruto (0 a 100).",
+    )
 
     m3_total = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal("0.000"), editable=False)
     valor_bruto = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal("0.00"), editable=False)
@@ -65,12 +83,27 @@ class Romaneio(models.Model):
             f" - {self.cliente.nome} - {self.data_romaneio:%d/%m/%Y}"
         )
 
+    def _get_fator_desconto(self) -> Decimal:
+        """
+        Retorna o fator multiplicativo do desconto:
+          0% -> 1.00
+          10% -> 0.90
+          100% -> 0.00
+        """
+        desconto_pct = (self.desconto or Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if desconto_pct < 0:
+            desconto_pct = Decimal("0.00")
+        if desconto_pct > 100:
+            desconto_pct = Decimal("100.00")
+        return (Decimal("100.00") - desconto_pct) / Decimal("100.00")
+
     def atualizar_totais(self, *, save: bool = True) -> None:
         """
         Atualiza valor_bruto, valor_total (líquido) e m3_total com base nos itens.
 
-        - valor_bruto: soma dos itens sem desconto
-        - valor_total: valor final com desconto do romaneio (percentual)
+        Importante: este método soma *quantidade_m3_total* do ItemRomaneio.
+        No modo DETALHADO, quem garante que quantidade_m3_total esteja correto
+        é ItemRomaneio.atualizar_totais().
         """
         totais = self.itens.aggregate(
             total_valor=Sum("valor_total"),
@@ -80,28 +113,19 @@ class Romaneio(models.Model):
         bruto = (totais["total_valor"] or Decimal("0.00")).quantize(VALOR_STEP, rounding=ROUND_HALF_UP)
         m3 = (totais["total_m3"] or Decimal("0.000")).quantize(QTD_M3_STEP, rounding=ROUND_HALF_UP)
 
-        desconto_pct = getattr(self, "desconto", None) or Decimal("0.00")  # em %
-        # garante faixa [0, 100]
-        if desconto_pct < 0:
-            desconto_pct = Decimal("0.00")
-        if desconto_pct > 100:
-            desconto_pct = Decimal("100.00")
-
-        fator = (Decimal("100.00") - desconto_pct) / Decimal("100.00")
-        liquido = (bruto * fator).quantize(VALOR_STEP, rounding=ROUND_HALF_UP)
+        liquido = (bruto * self._get_fator_desconto()).quantize(VALOR_STEP, rounding=ROUND_HALF_UP)
 
         self.valor_bruto = bruto
         self.valor_total = liquido
         self.m3_total = m3
 
         if save:
-            update_fields = ["valor_bruto", "valor_total", "m3_total"]
-            super().save(update_fields=update_fields)
+            super().save(update_fields=["valor_bruto", "valor_total", "m3_total"])
 
 
 class ItemRomaneio(models.Model):
     """
-    Item do romaneio - representa um TIPO DE MADEIRA.
+    Item do romaneio - representa um tipo de madeira.
     - SIMPLES: usuário informa quantidade_m3_total diretamente.
     - DETALHADO: quantidade_m3_total vem da soma das unidades.
     """
@@ -138,6 +162,7 @@ class ItemRomaneio(models.Model):
 
     def __str__(self) -> str:
         nome = self.tipo_madeira.nome if self.tipo_madeira else ""
+        # Evita query extra cara no admin/listas (count() ainda faz query, mas é mais claro)
         qtd_unidades = self.unidades.count()
         return f"{nome} - {qtd_unidades} unidade(s) - {self.quantidade_m3_total:.3f} m³"
 
@@ -167,26 +192,37 @@ class ItemRomaneio(models.Model):
 
         if modalidade == "DETALHADO":
             totais = self.unidades.aggregate(total_m3=Sum("quantidade_m3"))
-            m3 = (totais["total_m3"] or Decimal("0.000")).quantize(QTD_M3_STEP, rounding=ROUND_HALF_UP)
-            self.quantidade_m3_total = m3
+            self.quantidade_m3_total = (totais["total_m3"] or Decimal("0.000")).quantize(
+                QTD_M3_STEP, rounding=ROUND_HALF_UP
+            )
         else:
             self.quantidade_m3_total = (self.quantidade_m3_total or Decimal("0.000")).quantize(
                 QTD_M3_STEP, rounding=ROUND_HALF_UP
             )
 
-        self.valor_total = (self.quantidade_m3_total * (self.valor_unitario or Decimal("0.00"))).quantize(
-            VALOR_STEP, rounding=ROUND_HALF_UP
-        )
+        self.valor_total = (
+            self.quantidade_m3_total * (self.valor_unitario or Decimal("0.00"))
+        ).quantize(VALOR_STEP, rounding=ROUND_HALF_UP)
 
         if save:
             super().save(update_fields=["quantidade_m3_total", "valor_total"])
 
         if atualizar_romaneio and self.romaneio_id:
+            # Recalcula bruto/líquido/m3 do romaneio
             self.romaneio.atualizar_totais()
 
     def save(self, *args, **kwargs):
+        """
+        Mantém coerência de valores ao salvar o item.
+
+        Nota:
+          - No DETALHADO, quantidade_m3_total pode ser sobrescrita por atualizar_totais()
+            quando unidades mudarem.
+          - No SIMPLES, garantimos valor_total coerente antes de salvar.
+        """
         # Preço automático se possível e se valor_unitario estiver vazio/zerado
         if (self.valor_unitario in (None, Decimal("0.00"))) and self.romaneio_id and self.tipo_madeira_id:
+            # pode disparar query para romaneio se não estiver carregado
             self.valor_unitario = self.tipo_madeira.get_preco(self.romaneio.tipo_romaneio)
 
         # No SIMPLES, garantimos coerência do valor_total antes de salvar.
@@ -194,15 +230,13 @@ class ItemRomaneio(models.Model):
             self.quantidade_m3_total = (self.quantidade_m3_total or Decimal("0.000")).quantize(
                 QTD_M3_STEP, rounding=ROUND_HALF_UP
             )
-            self.valor_total = (self.quantidade_m3_total * (self.valor_unitario or Decimal("0.00"))).quantize(
-                VALOR_STEP, rounding=ROUND_HALF_UP
-            )
+            self.valor_total = (
+                self.quantidade_m3_total * (self.valor_unitario or Decimal("0.00"))
+            ).quantize(VALOR_STEP, rounding=ROUND_HALF_UP)
 
         super().save(*args, **kwargs)
 
-        # Pós-save:
-        # - SIMPLES: atualiza romaneio imediatamente
-        # - DETALHADO: quem recalcula é UnidadeRomaneio.save/delete (e/ou a view ao final)
+        # Pós-save: no SIMPLES atualiza romaneio imediatamente
         if self.romaneio_id and self.romaneio.modalidade == "SIMPLES":
             self.romaneio.atualizar_totais()
 
@@ -217,11 +251,20 @@ class UnidadeRomaneio(models.Model):
     item = models.ForeignKey(ItemRomaneio, on_delete=models.CASCADE, related_name="unidades")
 
     comprimento = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Comprimento (m)"
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Comprimento (m)",
     )
     rodo = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="Rôdo (cm)"
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Rôdo (cm)",
     )
+
     desconto_1 = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, default=Decimal("0.00"))
     desconto_2 = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, default=Decimal("0.00"))
 
@@ -241,6 +284,10 @@ class UnidadeRomaneio(models.Model):
         return f"Unidade #{self.id} - {self.quantidade_m3:.3f} m³"
 
     def calcular_m3_detalhado(self) -> Decimal | None:
+        """
+        Calcula o m³ pela fórmula do modo detalhado.
+        Retorna None se faltar dados necessários.
+        """
         if self.rodo is None or self.comprimento is None:
             return None
 
