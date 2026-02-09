@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Fluxo Financeiro {{ mes }}/{{ ano }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm;
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 10px;
+        color: #666;
+      }
+    }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; }
+    .header { border-bottom: 2px solid #246b29; padding-bottom: 8px; margin-bottom: 12px; }
+    .title { font-size: 16px; font-weight: 800; margin: 0; }
+    .sub { color: #666; font-size: 11px; margin-top: 2px; }
+    .kpis { margin: 10px 0 12px 0; }
+    .kpis b { color: #246b29; }
+    h3 { margin: 16px 0 8px 0; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cfd4dc; padding: 6px; font-size: 11px; }
+    th { background: #eef3ef; text-align: left; }
+    .num { text-align: right; white-space: nowrap; }
+    thead { display: table-header-group; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p class="title">Fluxo Financeiro — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
+    <div class="sub">Gerado em: {{ now|date:"d/m/Y H:i" }}</div>
+  </div>
+
+  <div class="kpis">
+    Vendas: <b>R$ {{ vendas_total|floatformat:2 }}</b> &nbsp;&nbsp;
+    Pagamentos: <b>R$ {{ pagamentos_total|floatformat:2 }}</b> &nbsp;&nbsp;
+    Saldo: <b>R$ {{ saldo|floatformat:2 }}</b>
+  </div>
+
+  <h3>Vendas</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:110px;">Data</th>
+        <th>Cliente</th>
+        <th class="num" style="width:150px;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vendas %}
+      <tr>
+        <td>{{ v.data_romaneio|date:"d/m/Y" }}</td>
+        <td>{{ v.cliente.nome }}</td>
+        <td class="num">R$ {{ v.valor_total|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" style="color:#888; text-align:center;">Nenhuma venda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Pagamentos</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:110px;">Data</th>
+        <th>Cliente</th>
+        <th style="width:160px;">Tipo</th>
+        <th class="num" style="width:150px;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pagamentos %}
+      <tr>
+        <td>{{ p.data_pagamento|date:"d/m/Y" }}</td>
+        <td>{{ p.cliente.nome }}</td>
+        <td>{{ p.get_tipo_pagamento_display }}</td>
+        <td class="num">R$ {{ p.valor|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" style="color:#888; text-align:center;">Nenhum pagamento.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

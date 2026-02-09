@@ -3,7 +3,6 @@ from .models import Cliente, TipoMadeira, Motorista
 from decimal import Decimal
 import re
 
-
 def is_valid_cpf(cpf: str) -> bool:
     cpf = re.sub(r'\D', '', cpf)
     if len(cpf) != 11 or cpf == cpf[0] * 11:
@@ -13,7 +12,6 @@ def is_valid_cpf(cpf: str) -> bool:
     d1 = (sum1 * 10 % 11) % 10
     d2 = (sum2 * 10 % 11) % 10
     return d1 == int(cpf[-2]) and d2 == int(cpf[-1])
-
 
 def is_valid_cnpj(cnpj: str) -> bool:
     cnpj = re.sub(r'\D', '', cnpj)
@@ -31,7 +29,6 @@ def is_valid_cnpj(cnpj: str) -> bool:
     d1 = calc(digits, m1)
     d2 = calc(digits + d1, m2)
     return cnpj[-2:] == d1 + d2
-
 
 class ClienteForm(forms.ModelForm):
     TIPO_PESSOA_CHOICES = (
@@ -72,6 +69,11 @@ class ClienteForm(forms.ModelForm):
             })
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # CPF/CNPJ é opcional pelo model, mas garanta no form também:
+        self.fields['cpf_cnpj'].required = False
+
     def clean_nome(self):
         nome = self.cleaned_data.get('nome', '')
         return nome.upper().strip() if nome else nome
@@ -81,8 +83,9 @@ class ClienteForm(forms.ModelForm):
         tipo = self.cleaned_data.get('tipo_pessoa')
         sem_mascara = re.sub(r'\D', '', valor)
 
+        # Correção: só valida se foi preenchido!
         if not sem_mascara:
-            raise forms.ValidationError("Informe um CPF ou CNPJ.")
+            return None  # ou "", mas None evita problema no banco
 
         if tipo == "F":
             # CPF: 11 dígitos
@@ -95,13 +98,7 @@ class ClienteForm(forms.ModelForm):
 
         return valor
 
-
 class TipoMadeiraForm(forms.ModelForm):
-    """
-    Formulário para tipos de madeira. Preços são totalmente livres,
-    sem restrição de valor entre normal e com frete.
-    """
-
     class Meta:
         model = TipoMadeira
         fields = ['nome', 'preco_normal', 'preco_com_frete', 'ativo']
@@ -128,14 +125,8 @@ class TipoMadeiraForm(forms.ModelForm):
     def clean_nome(self):
         nome = self.cleaned_data.get('nome', '')
         return nome.upper().strip() if nome else nome
-    # Regra de preços removida: preços livres!
-
 
 class MotoristaForm(forms.ModelForm):
-    """
-    Formulário para cadastro/edição de motoristas.
-    """
-
     class Meta:
         model = Motorista
         fields = ['nome', 'cpf', 'telefone', 'placa_veiculo', 'ativo']

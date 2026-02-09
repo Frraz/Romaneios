@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Excluir motorista</h1>
+<form method="post">
+  {% csrf_token %}
+  <p>Confirma excluir "{{ object }}"?</p>
+  <button type="submit">Excluir</button>
+  <a href="{% url 'cadastros:motorista_list' %}">Cancelar</a>
+</form>
+{% endblock %}

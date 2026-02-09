@@ -9,38 +9,105 @@
         <i class="fas fa-exchange-alt"></i> Fluxo Financeiro
       </div>
 
-      <div class="text-muted small">
-        Período: <b>{{ mes|stringformat:"02d" }}/{{ ano }}</b>
+      <!-- Export do período (preserva filtros) -->
+      <div class="d-flex gap-2 flex-wrap">
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_v=request.GET.sort_v dir_v=request.GET.dir_v sort_p=request.GET.sort_p dir_p=request.GET.dir_p %}
+          <a class="btn btn-outline-success btn-sm"
+             href="{% url 'relatorios:fluxo_financeiro_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}{% if sort_p %}&sort_p={{ sort_p }}{% endif %}{% if dir_p %}&dir_p={{ dir_p }}{% endif %}"
+             title="Exportar fluxo financeiro do período em Excel (.xlsx)">
+            <i class="fas fa-file-excel"></i> Excel
+          </a>
+
+          <a class="btn btn-outline-danger btn-sm"
+             href="{% url 'relatorios:fluxo_financeiro_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}{% if sort_p %}&sort_p={{ sort_p }}{% endif %}{% if dir_p %}&dir_p={{ dir_p }}{% endif %}"
+             title="Exportar fluxo financeiro do período em PDF">
+            <i class="fas fa-file-pdf"></i> PDF
+          </a>
+        {% endwith %}
       </div>
     </div>
 
     <div class="card-body">
       <!-- ===== Filtros ===== -->
       <form method="get" class="row g-2 align-items-end mb-3">
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Mês</label>
           <select name="mes" class="form-select">
             {% for m in meses %}
-              <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
+              <option value="{{ m }}"
+                      {% if m|stringformat:"s" == request.GET.mes|default:mes|stringformat:"s" %}selected{% endif %}>
                 {{ m|stringformat:"02d" }}
               </option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Ano</label>
           <select name="ano" class="form-select">
             {% for a in anos %}
-              <option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>
+              <option value="{{ a }}"
+                      {% if a|stringformat:"s" == request.GET.ano|default:ano|stringformat:"s" %}selected{% endif %}>
+                {{ a }}
+              </option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="col-12 col-md-3 d-grid">
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Nº Romaneio (opcional)</label>
+          <input type="text"
+                 name="numero_romaneio"
+                 class="form-control"
+                 value="{{ request.GET.numero_romaneio|default:'' }}"
+                 placeholder="Ex: 11669">
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Tipo de madeira</label>
+          <select name="tipo_madeira_id" class="form-select">
+            <option value="">Todas</option>
+            {% for tm in tipos_madeira %}
+              <option value="{{ tm.id }}"
+                      {% if tm.id|stringformat:"s" == request.GET.tipo_madeira_id %}selected{% endif %}>
+                {{ tm.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- preserva ordenação quando filtra -->
+        <input type="hidden" name="sort_v" value="{{ request.GET.sort_v|default:'' }}">
+        <input type="hidden" name="dir_v" value="{{ request.GET.dir_v|default:'' }}">
+        <input type="hidden" name="sort_p" value="{{ request.GET.sort_p|default:'' }}">
+        <input type="hidden" name="dir_p" value="{{ request.GET.dir_p|default:'' }}">
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-filter"></i> Filtrar
           </button>
+        </div>
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
+          <a class="btn btn-outline-secondary"
+             href="{% url 'relatorios:fluxo_financeiro' %}"
+             title="Limpar filtros">
+            <i class="fas fa-eraser"></i> Limpar
+          </a>
+        </div>
+
+        <div class="col-12 col-lg text-lg-end text-muted small">
+          Período: <b>{{ request.GET.mes|default:mes|stringformat:"02d" }}/{{ request.GET.ano|default:ano }}</b>
+          {% if request.GET.numero_romaneio %}
+            &nbsp;|&nbsp; Nº: <b>#{{ request.GET.numero_romaneio }}</b>
+          {% endif %}
+          {% if request.GET.tipo_madeira_id %}
+            &nbsp;|&nbsp; Madeira: <b>
+              {% for tm in tipos_madeira %}
+                {% if tm.id|stringformat:"s" == request.GET.tipo_madeira_id %}{{ tm.nome }}{% endif %}
+              {% endfor %}
+            </b>
+          {% endif %}
         </div>
       </form>
 
@@ -98,6 +165,7 @@
         </div>
       </div>
 
+      <!-- ===== Tabs ===== -->
       <ul class="nav nav-tabs" id="fluxoTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active"
@@ -125,86 +193,107 @@
         </li>
       </ul>
 
-      <div class="tab-content border border-top-0 rounded-bottom p-3" id="fluxoTabsContent">
-        <!-- ===== Vendas ===== -->
-        <div class="tab-pane fade show active" id="vendas" role="tabpanel" aria-labelledby="vendas-tab" tabindex="0">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-            <h6 class="m-0">
-              Vendas do mês
-              <span class="text-muted fw-normal">({{ vendas_detalhadas|length }})</span>
-            </h6>
+      {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_v=request.GET.sort_v|default:"data" dir_v=request.GET.dir_v|default:"asc" sort_p=request.GET.sort_p|default:"data" dir_p=request.GET.dir_p|default:"asc" %}
+        <div class="tab-content border border-top-0 rounded-bottom p-3" id="fluxoTabsContent">
+          <!-- ===== Vendas ===== -->
+          <div class="tab-pane fade show active" id="vendas" role="tabpanel" aria-labelledby="vendas-tab" tabindex="0">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:120px;">
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}&sort_v=data&dir_v={% if sort_v == 'data' and dir_v == 'asc' %}desc{% else %}asc{% endif %}{% if sort_p %}&sort_p={{ sort_p }}{% endif %}{% if dir_p %}&dir_p={{ dir_p }}{% endif %}">
+                        Data {% if sort_v == "data" %}{% if dir_v == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                    <th>
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}&sort_v=cliente&dir_v={% if sort_v == 'cliente' and dir_v == 'asc' %}desc{% else %}asc{% endif %}{% if sort_p %}&sort_p={{ sort_p }}{% endif %}{% if dir_p %}&dir_p={{ dir_p }}{% endif %}">
+                        Cliente {% if sort_v == "cliente" %}{% if dir_v == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                    <th class="text-end" style="width:160px;">
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}&sort_v=valor&dir_v={% if sort_v == 'valor' and dir_v == 'asc' %}desc{% else %}asc{% endif %}{% if sort_p %}&sort_p={{ sort_p }}{% endif %}{% if dir_p %}&dir_p={{ dir_p }}{% endif %}">
+                        Valor {% if sort_v == "valor" %}{% if dir_v == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for venda in vendas_detalhadas %}
+                    <tr>
+                      <td>{{ venda.data_romaneio|date:"d/m/Y" }}</td>
+                      <td>{{ venda.cliente.nome }}</td>
+                      <td class="text-end fw-bold text-primary">R$ {{ venda.valor_total|floatformat:2 }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="3" class="text-center text-muted py-3">Nenhuma venda neste período.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="table table-sm table-striped table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th style="width:120px;">Data</th>
-                  <th>Cliente</th>
-                  <th class="text-end" style="width:160px;">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for venda in vendas_detalhadas %}
+          <!-- ===== Pagamentos ===== -->
+          <div class="tab-pane fade" id="pagamentos" role="tabpanel" aria-labelledby="pagamentos-tab" tabindex="0">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-hover align-middle mb-0">
+                <thead class="table-light">
                   <tr>
-                    <td>{{ venda.data_romaneio|date:"d/m/Y" }}</td>
-                    <td>{{ venda.cliente.nome }}</td>
-                    <td class="text-end fw-bold text-primary">R$ {{ venda.valor_total|floatformat:2 }}</td>
+                    <th style="width:120px;">
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}&sort_p=data&dir_p={% if sort_p == 'data' and dir_p == 'asc' %}desc{% else %}asc{% endif %}">
+                        Data {% if sort_p == "data" %}{% if dir_p == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                    <th>
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}&sort_p=cliente&dir_p={% if sort_p == 'cliente' and dir_p == 'asc' %}desc{% else %}asc{% endif %}">
+                        Cliente {% if sort_p == "cliente" %}{% if dir_p == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                    <th class="text-end" style="width:160px;">
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}&sort_p=valor&dir_p={% if sort_p == 'valor' and dir_p == 'asc' %}desc{% else %}asc{% endif %}">
+                        Valor {% if sort_p == "valor" %}{% if dir_p == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
+                    <th style="width:160px;">
+                      <a class="text-decoration-none"
+                         href="?mes={{ mes_q }}&ano={{ ano_q }}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_v %}&sort_v={{ sort_v }}{% endif %}{% if dir_v %}&dir_v={{ dir_v }}{% endif %}&sort_p=tipo&dir_p={% if sort_p == 'tipo' and dir_p == 'asc' %}desc{% else %}asc{% endif %}">
+                        Tipo {% if sort_p == "tipo" %}{% if dir_p == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                      </a>
+                    </th>
                   </tr>
-                {% empty %}
-                  <tr>
-                    <td colspan="3" class="text-center text-muted py-3">Nenhuma venda neste período.</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {% for pagamento in pagamentos_detalhados %}
+                    <tr>
+                      <td>{{ pagamento.data_pagamento|date:"d/m/Y" }}</td>
+                      <td>{{ pagamento.cliente.nome }}</td>
+                      <td class="text-end fw-bold text-success">R$ {{ pagamento.valor|floatformat:2 }}</td>
+                      <td>
+                        <span class="badge bg-info text-dark">{{ pagamento.get_tipo_pagamento_display }}</span>
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-3">Nenhum pagamento neste período.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-
-        <!-- ===== Pagamentos ===== -->
-        <div class="tab-pane fade" id="pagamentos" role="tabpanel" aria-labelledby="pagamentos-tab" tabindex="0">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-            <h6 class="m-0">
-              Pagamentos recebidos
-              <span class="text-muted fw-normal">({{ pagamentos_detalhados|length }})</span>
-            </h6>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-sm table-striped table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th style="width:120px;">Data</th>
-                  <th>Cliente</th>
-                  <th class="text-end" style="width:160px;">Valor</th>
-                  <th style="width:160px;">Tipo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for pagamento in pagamentos_detalhados %}
-                  <tr>
-                    <td>{{ pagamento.data_pagamento|date:"d/m/Y" }}</td>
-                    <td>{{ pagamento.cliente.nome }}</td>
-                    <td class="text-end fw-bold text-success">R$ {{ pagamento.valor|floatformat:2 }}</td>
-                    <td>
-                      <span class="badge bg-info text-dark">
-                        {{ pagamento.get_tipo_pagamento_display }}
-                      </span>
-                    </td>
-                  </tr>
-                {% empty %}
-                  <tr>
-                    <td colspan="4" class="text-center text-muted py-3">Nenhum pagamento neste período.</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      {% endwith %}
 
       <div class="text-muted small mt-3">
-        Dica: use as abas para alternar entre vendas e pagamentos. O saldo é calculado como <b>pagamentos − vendas</b>.
+        Dica: você pode filtrar por Nº do romaneio, por tipo de madeira e clicar nos títulos das colunas para ordenar.
       </div>
     </div>
   </div>

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Sum
@@ -130,7 +131,57 @@ class _RomaneioFormsetsMixin:
         return context
 
 
-class RomaneioCreateView(LoginRequiredMixin, _RomaneioFormsetsMixin, CreateView):
+class _RomaneioSaveMixin:
+    """
+    Centraliza a lógica de salvar Romaneio + itens + unidades e recalcular totais.
+    Evita duplicação entre Create e Update.
+    """
+
+    def _build_unidades_preview_for_create(self, request, formset):
+        unidades_formsets_preview = []
+        for i, _item_form in enumerate(formset.forms):
+            prefix = f"unidades-{i}"
+            unidades_formsets_preview.append(UnidadeRomaneioFormSet(request.POST, instance=None, prefix=prefix))
+        return unidades_formsets_preview
+
+    def _validate_detalhado_requires_units(self, form, unidades_formsets_preview):
+        """
+        Se modalidade == DETALHADO, cada item precisa ter pelo menos 1 unidade válida.
+        Coloca o erro no próprio formset (non_form_errors) para o template exibir.
+        """
+        unidades_valid = True
+        if form.is_valid() and form.cleaned_data.get("modalidade") == "DETALHADO":
+            for uf in unidades_formsets_preview:
+                valid_units = sum(
+                    1
+                    for f in uf.forms
+                    if f.is_valid() and not f.cleaned_data.get("DELETE", False)
+                )
+                if valid_units == 0:
+                    uf._non_form_errors.append(
+                        "No modo DETALHADO, cada tipo de madeira deve ter pelo menos uma unidade."
+                    )
+                    unidades_valid = False
+        return unidades_valid
+
+    def _save_unidades_for_itens(self, request, itens):
+        for i, item in enumerate(itens):
+            prefix = f"unidades-{i}"
+            uf = UnidadeRomaneioFormSet(request.POST, instance=item, prefix=prefix)
+            if uf.is_valid():
+                uf.save()
+
+    def _recalcular_totais_apos_salvar(self, romaneio: Romaneio):
+        # Determinístico no DETALHADO: força o item a somar unidades e só então soma no romaneio
+        if romaneio.modalidade == "DETALHADO":
+            itens_db = romaneio.itens.all().prefetch_related("unidades")
+            for item in itens_db:
+                item.atualizar_totais(save=True, atualizar_romaneio=False)
+
+        romaneio.atualizar_totais()
+
+
+class RomaneioCreateView(LoginRequiredMixin, _RomaneioFormsetsMixin, _RomaneioSaveMixin, CreateView):
     model = Romaneio
     form_class = RomaneioForm
     template_name = "romaneio/romaneio_form.html"
@@ -145,96 +196,42 @@ class RomaneioCreateView(LoginRequiredMixin, _RomaneioFormsetsMixin, CreateView)
         self.object = None
         form = self.get_form()
 
-        # DEBUG: Mostra o que está chegando no POST
-        print("\n" + "=" * 80)
-        print("🔍 DEBUG - POST DATA (unidades):")
-        for key, value in request.POST.items():
-            if 'unidades' in key:
-                print(f"  {key}: {value}")
-        print("=" * 80 + "\n")
+        # ancorar o inline formset numa instância (mesmo não salva ainda)
+        self.object = Romaneio()
+        formset = ItemRomaneioFormSet(request.POST, instance=self.object)
 
-        formset = ItemRomaneioFormSet(request.POST)
+        unidades_formsets_preview = self._build_unidades_preview_for_create(request, formset)
 
-        # Constrói unidades_formsets SEM salvar itens ainda
-        unidades_formsets_preview = []
-        for i in range(len(formset.forms)):
-            prefix = f"unidades-{i}"
-            uf = UnidadeRomaneioFormSet(request.POST, instance=None, prefix=prefix)
-            unidades_formsets_preview.append(uf)
-            
-            # DEBUG: Mostra se o formset de unidades é válido
-            print(f"🔍 Unidades formset {i} (prefix={prefix}):")
-            print(f"   - is_valid: {uf.is_valid()}")
-            print(f"   - forms count: {len(uf.forms)}")
-            if not uf.is_valid():
-                print(f"   - errors: {uf.errors}")
-                print(f"   - non_form_errors: {uf.non_form_errors()}")
-
-        # Validação COMPLETA
         form_valid = form.is_valid()
         formset_valid = formset.is_valid()
         unidades_valid = all(uf.is_valid() for uf in unidades_formsets_preview)
-
-        print(f"\n✅ Validação:")
-        print(f"   - form_valid: {form_valid}")
-        print(f"   - formset_valid: {formset_valid}")
-        print(f"   - unidades_valid: {unidades_valid}")
-
-        # VALIDAÇÃO MANUAL: se DETALHADO, cada item DEVE ter pelo menos 1 unidade
-        if form_valid and form.cleaned_data.get('modalidade') == 'DETALHADO':
-            print("\n🔍 Modalidade DETALHADO - validando unidades...")
-            for i, uf in enumerate(unidades_formsets_preview):
-                valid_units = sum(
-                    1 for f in uf.forms 
-                    if f.is_valid() and not f.cleaned_data.get('DELETE', False)
-                )
-                print(f"   - Item {i}: {valid_units} unidades válidas")
-                
-                if valid_units == 0:
-                    print(f"   ❌ Item {i} não tem unidades!")
-                    uf._non_form_errors.append("No modo DETALHADO, cada tipo de madeira deve ter pelo menos uma unidade.")
-                    unidades_valid = False
+        unidades_valid = unidades_valid and self._validate_detalhado_requires_units(form, unidades_formsets_preview)
 
         if not (form_valid and formset_valid and unidades_valid):
-            print("\n❌ Validação falhou - renderizando form com erros\n")
             context = self.get_context_data(form=form)
             context = self._inject_formsets_into_context(
                 context, formset=formset, unidades_formsets=unidades_formsets_preview
             )
             return self.render_to_response(context)
 
-        print("\n✅ Todas validações OK - salvando...\n")
-
-        # Tudo válido: salva romaneio
+        # Salva romaneio
         self.object = form.save(commit=False)
         self.object.usuario_cadastro = request.user
         self.object.save()
-        print(f"✅ Romaneio salvo: {self.object.pk}")
 
         # Salva itens
         formset.instance = self.object
         itens = formset.save()
-        print(f"✅ {len(itens)} itens salvos")
 
-        # Salva unidades
-        for i, item in enumerate(itens):
-            prefix = f"unidades-{i}"
-            uf = UnidadeRomaneioFormSet(request.POST, instance=item, prefix=prefix)
-            if uf.is_valid():
-                unidades_salvas = uf.save()
-                print(f"✅ Item {i}: {len(unidades_salvas)} unidades salvas")
-            else:
-                print(f"❌ Item {i}: erro ao salvar unidades - {uf.errors}")
-
-        # Recalcula totais
-        self.object.atualizar_totais()
-        print(f"✅ Totais atualizados\n")
+        # Salva unidades e recalcula
+        self._save_unidades_for_itens(request, itens)
+        self._recalcular_totais_apos_salvar(self.object)
 
         messages.success(request, f"Romaneio {self.object.numero_romaneio} cadastrado com sucesso!")
         return redirect(self.get_success_url())
 
 
-class RomaneioUpdateView(LoginRequiredMixin, _RomaneioFormsetsMixin, UpdateView):
+class RomaneioUpdateView(LoginRequiredMixin, _RomaneioFormsetsMixin, _RomaneioSaveMixin, UpdateView):
     model = Romaneio
     form_class = RomaneioForm
     template_name = "romaneio/romaneio_form.html"
@@ -255,33 +252,25 @@ class RomaneioUpdateView(LoginRequiredMixin, _RomaneioFormsetsMixin, UpdateView)
         for i, item_form in enumerate(formset.forms):
             prefix = f"unidades-{i}"
             instance = item_form.instance if getattr(item_form.instance, "pk", None) else None
-            uf = UnidadeRomaneioFormSet(request.POST, instance=instance, prefix=prefix)
-            unidades_formsets.append(uf)
+            unidades_formsets.append(UnidadeRomaneioFormSet(request.POST, instance=instance, prefix=prefix))
 
-        # Validação completa
         form_valid = form.is_valid()
         formset_valid = formset.is_valid()
         unidades_valid = all(uf.is_valid() for uf in unidades_formsets)
 
         if not (form_valid and formset_valid and unidades_valid):
             context = self.get_context_data(form=form)
-            context = self._inject_formsets_into_context(
-                context, formset=formset, unidades_formsets=unidades_formsets
-            )
+            context = self._inject_formsets_into_context(context, formset=formset, unidades_formsets=unidades_formsets)
             return self.render_to_response(context)
 
-        # Salva
+        # Salva romaneio e itens
         self.object = form.save()
         formset.instance = self.object
         itens = formset.save()
 
-        for i, item in enumerate(itens):
-            prefix = f"unidades-{i}"
-            uf = UnidadeRomaneioFormSet(request.POST, instance=item, prefix=prefix)
-            if uf.is_valid():
-                uf.save()
-
-        self.object.atualizar_totais()
+        # Salva unidades e recalcula
+        self._save_unidades_for_itens(request, itens)
+        self._recalcular_totais_apos_salvar(self.object)
 
         messages.success(request, f"Romaneio {self.object.numero_romaneio} atualizado com sucesso!")
         return redirect(self.get_success_url())
@@ -298,6 +287,7 @@ class RomaneioDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
+@login_required
 def get_preco_madeira(request):
     """
     Endpoint AJAX para buscar preço de madeira dinamicamente.

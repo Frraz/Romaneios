@@ -2,135 +2,224 @@
 {% block title %}Ficha de Romaneios{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>
-            <i class="fas fa-file-invoice"></i> Ficha de Romaneios
-        </span>
-        <!-- Botão exportar relatório -->
-        <form method="get" action="{% url 'relatorios:ficha_romaneios_export' %}" class="mb-0" target="_blank">
-            <input type="hidden" name="mes" value="{{ request.GET.mes|default:mes }}">
-            <input type="hidden" name="ano" value="{{ request.GET.ano|default:ano }}">
-            <input type="hidden" name="cliente" value="{{ request.GET.cliente }}">
-            <button class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-file-export"></i> Exportar relatório (.CSV)
-            </button>
-        </form>
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="fw-bold">
+        <i class="fas fa-file-invoice"></i> Ficha de Romaneios
+      </div>
+
+      <!-- Export do período (preserva filtros) -->
+      <div class="d-flex gap-2 flex-wrap">
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
+          <a class="btn btn-outline-success btn-sm"
+             href="{% url 'relatorios:ficha_romaneios_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
+             title="Exportar romaneios do período em Excel (.xlsx)">
+            <i class="fas fa-file-excel"></i> Excel
+          </a>
+
+          <a class="btn btn-outline-danger btn-sm"
+             href="{% url 'relatorios:ficha_romaneios_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
+             title="Exportar romaneios do período em PDF">
+            <i class="fas fa-file-pdf"></i> PDF
+          </a>
+
+        {% endwith %}
+      </div>
     </div>
 
     <div class="card-body">
-        <!-- Filtros por período e cliente -->
-        <form method="get" class="row gx-2 gy-2 mb-4">
-            <div class="col-md-2">
-                <label class="form-label">Mês</label>
-                <select name="mes" class="form-select">
-                    {% for m in meses %}
-                        <option value="{{ m }}"
-                            {% if m|stringformat:"s" == request.GET.mes|default:mes|stringformat:"s" %}selected{% endif %}>
-                            {{ m }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Ano</label>
-                <select name="ano" class="form-select">
-                    {% for a in anos %}
-                        <option value="{{ a }}"
-                            {% if a|stringformat:"s" == request.GET.ano|default:ano|stringformat:"s" %}selected{% endif %}>
-                            {{ a }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Cliente</label>
-                <select name="cliente" class="form-select">
-                    <option value="">Todos</option>
-                    {% for cliente in clientes %}
-                        <option value="{{ cliente.id }}"
-                            {% if cliente.id|stringformat:"s" == request.GET.cliente %}
-                                selected
-                            {% endif %}
-                        >{{ cliente.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter"></i> Filtrar
-                </button>
-            </div>
-        </form>
-
-        <!-- Totais do período -->
-        <div class="mb-3">
-            <span class="badge bg-primary me-2">
-                <i class="fas fa-cube"></i> Total m³: {{ total_m3_periodo|floatformat:3 }}
-            </span>
-            <span class="badge bg-success me-2">
-                <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ total_valor_periodo|floatformat:2 }}
-            </span>
-            <span class="text-muted ms-2">({{ romaneios|length }} romaneios)</span>
+      <!-- ===== Filtros ===== -->
+      <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-6 col-md-2 col-lg-2">
+          <label class="form-label">Mês</label>
+          <select name="mes" class="form-select">
+            {% for m in meses %}
+              <option value="{{ m }}"
+                      {% if m|stringformat:"s" == request.GET.mes|default:mes|stringformat:"s" %}selected{% endif %}>
+                {{ m|stringformat:"02d" }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Tabela de romaneios do período -->
+        <div class="col-6 col-md-2 col-lg-2">
+          <label class="form-label">Ano</label>
+          <select name="ano" class="form-select">
+            {% for a in anos %}
+              <option value="{{ a }}"
+                      {% if a|stringformat:"s" == request.GET.ano|default:ano|stringformat:"s" %}selected{% endif %}>
+                {{ a }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Cliente</label>
+          <select name="cliente" class="form-select">
+            <option value="">Todos</option>
+            {% for cliente in clientes %}
+              <option value="{{ cliente.id }}"
+                      {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
+                {{ cliente.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-2">
+          <label class="form-label">Nº Romaneio</label>
+          <input type="text"
+                 name="numero_romaneio"
+                 class="form-control"
+                 value="{{ request.GET.numero_romaneio|default:'' }}"
+                 placeholder="Ex: 11669">
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Tipo de madeira</label>
+          <select name="tipo_madeira_id" class="form-select">
+            <option value="">Todas</option>
+            {% for tm in tipos_madeira %}
+              <option value="{{ tm.id }}"
+                      {% if tm.id|stringformat:"s" == request.GET.tipo_madeira_id %}selected{% endif %}>
+                {{ tm.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- preserva ordenação quando filtra -->
+        <input type="hidden" name="sort" value="{{ request.GET.sort|default:'' }}">
+        <input type="hidden" name="dir" value="{{ request.GET.dir|default:'' }}">
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Filtrar
+          </button>
+        </div>
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
+          <a class="btn btn-outline-secondary"
+             href="{% url 'relatorios:ficha_romaneios' %}"
+             title="Limpar filtros">
+            <i class="fas fa-eraser"></i> Limpar
+          </a>
+        </div>
+      </form>
+
+      <!-- ===== Totais do período ===== -->
+      <div class="mb-3">
+        <span class="badge bg-primary me-2">
+          <i class="fas fa-cube"></i> Total m³: {{ total_m3_periodo|floatformat:3 }}
+        </span>
+        <span class="badge bg-success me-2">
+          <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ total_valor_periodo|floatformat:2 }}
+        </span>
+        <span class="text-muted ms-2">({{ romaneios|length }} romaneios)</span>
+      </div>
+
+      {% with sort=request.GET.sort|default:"data" dir=request.GET.dir|default:"asc" %}
         <div class="table-responsive">
-            <table class="table table-striped align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Nº de Romaneio</th>
-                        <th>Data Romaneio</th>
-                        <th>Tipo</th>
-                        <th class="text-end">M³</th>
-                        <th class="text-end">Total R$</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for romaneio in romaneios %}
-                    <tr>
-                        <td>{{ romaneio.cliente.nome }}</td>
-                        <td>{{ romaneio.numero_romaneio }}</td>
-                        <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
-                        <td>
-                            {% if romaneio.tipo_romaneio == "NORMAL" %}
-                                <span class="badge bg-primary">Normal</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Com Frete</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
-                        <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
+          <table class="table table-striped table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>
+                  <a class="text-decoration-none"
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=cliente&dir={% if sort == 'cliente' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Cliente
+                    {% if sort == "cliente" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                  </a>
+                </th>
 
-                        <td class="text-end">
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações exportação">
-                                <a class="btn btn-outline-dark"
-                                   href="{% url 'relatorios:romaneio_export_pdf' romaneio.id %}"
-                                   target="_blank"
-                                   title="Exportar PDF (impressão)">
-                                    <i class="fas fa-file-pdf"></i> PDF
-                                </a>
-                                <a class="btn btn-outline-success"
-                                   href="{% url 'relatorios:romaneio_export_excel' romaneio.id %}"
-                                   target="_blank"
-                                   title="Exportar Excel">
-                                    <i class="fas fa-file-excel"></i> Excel
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            Nenhum romaneio encontrado neste período/filtros.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                <th style="width: 140px;">
+                  <a class="text-decoration-none"
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=numero&dir={% if sort == 'numero' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Nº Romaneio
+                    {% if sort == "numero" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                  </a>
+                </th>
+
+                <th style="width: 140px;">
+                  <a class="text-decoration-none"
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=data&dir={% if sort == 'data' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Data
+                    {% if sort == "data" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                  </a>
+                </th>
+
+                <th style="width: 140px;">Tipo</th>
+
+                <th class="text-end" style="width: 120px;">
+                  <a class="text-decoration-none"
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=m3&dir={% if sort == 'm3' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    M³
+                    {% if sort == "m3" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                  </a>
+                </th>
+
+                <th class="text-end" style="width: 150px;">
+                  <a class="text-decoration-none"
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=total&dir={% if sort == 'total' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                    Total R$
+                    {% if sort == "total" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
+                  </a>
+                </th>
+
+                <th class="text-end" style="width: 220px;">Ações</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for romaneio in romaneios %}
+                <tr>
+                  <td>{{ romaneio.cliente.nome }}</td>
+                  <td class="fw-semibold">{{ romaneio.numero_romaneio }}</td>
+                  <td>{{ romaneio.data_romaneio|date:"d/m/Y" }}</td>
+                  <td>
+                    {% if romaneio.tipo_romaneio == "NORMAL" %}
+                      <span class="badge bg-primary">Normal</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark">Com Frete</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">{{ romaneio.m3_total|floatformat:3 }}</td>
+                  <td class="text-end">R$ {{ romaneio.valor_total|floatformat:2 }}</td>
+
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Ações exportação">
+                      <a class="btn btn-outline-dark"
+                         href="{% url 'relatorios:romaneio_export_pdf' romaneio.id %}"
+                         target="_blank"
+                         title="Exportar PDF (impressão)">
+                        <i class="fas fa-file-pdf"></i> PDF
+                      </a>
+                      <a class="btn btn-outline-success"
+                         href="{% url 'relatorios:romaneio_export_excel' romaneio.id %}"
+                         target="_blank"
+                         title="Exportar Excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">
+                    Nenhum romaneio encontrado neste período/filtros.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
+      {% endwith %}
+
+      <div class="text-muted small mt-2">
+        Dica: clique nos títulos das colunas para ordenar. Os botões PDF/Excel em “Ações” exportam um romaneio individual. Os botões do topo exportam o período filtrado.
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

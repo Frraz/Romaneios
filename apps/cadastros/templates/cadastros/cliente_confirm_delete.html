@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Confirmar Exclusão de Cliente{% endblock %}
+
+{% block content %}
+<div class="card mx-auto mt-5 shadow-sm" style="max-width: 560px;">
+    <div class="card-header bg-danger text-white">
+        <i class="fas fa-user-times"></i> Excluir Cliente
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <p class="mb-3">
+                Tem certeza que deseja <b>excluir</b> o cliente <strong>{{ object.nome }}</strong>?
+            </p>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Esta ação <b>não pode ser desfeita</b>. Todos os registros vinculados ficarão sem cliente.
+            </div>
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash-alt"></i> Excluir
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

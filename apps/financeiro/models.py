@@ -65,11 +65,14 @@ class Pagamento(models.Model):
         return f"{self.cliente.nome} - R$ {self.valor:.2f} ({self.tipo_pagamento}) em {self.data_pagamento:%d/%m/%Y}"
 
     def clean(self):
-        if self.valor <= 0:
-            raise ValidationError('O valor do pagamento deve ser positivo.')
-        # Corrigido: comparar data do pagamento com a data de hoje
-        if self.data_pagamento > timezone.now().date():
-            raise ValidationError('A data do pagamento não pode ser no futuro.')
+        super().clean()
+
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({"valor": "O valor do pagamento deve ser positivo."})
+
+        # use localdate para respeitar TIME_ZONE do Django
+        if self.data_pagamento and self.data_pagamento > timezone.localdate():
+            raise ValidationError({"data_pagamento": "A data do pagamento não pode ser no futuro."})
 
     def save(self, *args, **kwargs):
         self.full_clean()

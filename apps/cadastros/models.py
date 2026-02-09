@@ -1,14 +1,12 @@
 from decimal import Decimal
-
 from django.core.validators import MinValueValidator
 from django.db import models
-
 
 class Cliente(models.Model):
     """
     Representa um comprador de madeira.
-    O saldo é dinâmico — total de pagamentos menos total de vendas.
-    Nunca armazene o saldo! Use Cliente.saldo_atual para garantir consistência.
+    Saldo dinâmico — total de pagamentos menos total de vendas.
+    Use Cliente.saldo_atual para garantir consistência.
     """
 
     nome = models.CharField(
@@ -18,11 +16,11 @@ class Cliente(models.Model):
         verbose_name="Nome",
     )
     cpf_cnpj = models.CharField(
-        max_length=18,  # Suporta CPF: 000.000.000-00 (14) e CNPJ: 00.000.000/0000-00 (18)
-        blank=False,
-        null=False,
+        max_length=18,  # CPF: 000.000.000-00 (14) ou CNPJ: 00.000.000/0000-00 (18)
+        blank=True,
+        null=True,  # AGORA: CPF/CNPJ é totalmente opcional
         verbose_name="CPF/CNPJ",
-        help_text="CPF ou CNPJ do cliente. Validação detalhada é feita no formulário.",
+        help_text="CPF ou CNPJ do cliente (opcional).",
     )
     telefone = models.CharField(
         max_length=20,
@@ -78,17 +76,11 @@ class Cliente(models.Model):
         return total_pagamentos - total_vendas
 
     def atualizar_saldo(self) -> Decimal:
-        """
-        Método legado apenas para compatibilidade.
-        Prefira usar a propriedade saldo_atual.
-        """
+        """Método legado — prefira saldo_atual."""
         return self.saldo_atual
 
-
 class TipoMadeira(models.Model):
-    """
-    Tipo/categoria da madeira, com preços para cada modalidade de venda.
-    """
+    """Tipo de madeira, com preços para cada modalidade."""
 
     nome = models.CharField(
         max_length=100,
@@ -128,21 +120,12 @@ class TipoMadeira(models.Model):
         return f"{self.nome} - Normal: R$ {self.preco_normal:.2f} | Com Frete: R$ {self.preco_com_frete:.2f}"
 
     def get_preco(self, tipo_romaneio: str) -> Decimal:
-        """
-        Retorna o preço correto conforme o tipo do romaneio.
-        tipo_romaneio:
-          - 'COM_FRETE' -> preco_com_frete
-          - qualquer outro valor -> preco_normal
-        """
         if tipo_romaneio == "COM_FRETE":
             return self.preco_com_frete
         return self.preco_normal
 
-
 class Motorista(models.Model):
-    """
-    Motorista/freteiro responsável pelo transporte.
-    """
+    """Motorista/freteiro responsável pelo transporte."""
 
     nome = models.CharField(
         max_length=100,

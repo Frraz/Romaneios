@@ -8,16 +8,6 @@
       <div class="fw-bold">
         <i class="fas fa-balance-scale"></i> Saldo de Clientes
       </div>
-
-      <div class="text-muted small">
-        Filtro:
-        <b>
-          {% if request.GET.tipo_saldo == "negativos" %}Negativos (Devendo)
-          {% elif request.GET.tipo_saldo == "positivos" %}Positivos (Crédito)
-          {% elif request.GET.tipo_saldo == "zerados" %}Zerados
-          {% else %}Todos{% endif %}
-        </b>
-      </div>
     </div>
 
     <div class="card-body">
@@ -25,7 +15,7 @@
       <form class="row g-2 align-items-end mb-3" method="get">
         <div class="col-12 col-md-4 col-lg-3">
           <label class="form-label">Tipo de saldo</label>
-          <select name="tipo_saldo" class="form-select" aria-label="Filtrar por tipo de saldo">
+          <select name="tipo_saldo" class="form-select">
             <option value="todos" {% if request.GET.tipo_saldo == "todos" or not request.GET.tipo_saldo %}selected{% endif %}>
               Todos
             </option>
@@ -41,26 +31,47 @@
           </select>
         </div>
 
-        <div class="col-12 col-md-3 col-lg-2 d-grid">
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Buscar cliente</label>
+          <input type="text"
+                 name="q"
+                 class="form-control"
+                 value="{{ request.GET.q|default:'' }}"
+                 placeholder="Nome, telefone ou CPF/CNPJ">
+        </div>
+
+        <div class="col-12 col-md-2 col-lg-2 d-grid">
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-filter"></i> Filtrar
           </button>
         </div>
+
+        <div class="col-12 col-md-2 col-lg-2 d-grid">
+          <a class="btn btn-outline-secondary"
+             href="{% url 'relatorios:saldo_clientes' %}"
+             title="Limpar filtros">
+            <i class="fas fa-eraser"></i> Limpar
+          </a>
+        </div>
+
+        <div class="col-12 col-lg text-lg-end text-muted small">
+          Ordenação padrão: <b>do mais devendo para o mais positivo</b>.
+        </div>
       </form>
 
-      <!-- ===== Resumo (contadores simples) ===== -->
+      <!-- ===== Resumo ===== -->
       <div class="row g-2 mb-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="p-3 border rounded bg-light h-100">
             <div class="text-muted small">Clientes exibidos</div>
             <div class="fw-bold fs-5">{{ clientes|length }}</div>
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="p-3 border rounded bg-light h-100">
-            <div class="text-muted small">Orientação</div>
-            <div class="small mb-0">
+            <div class="text-muted small">Legenda</div>
+            <div class="small">
               <span class="badge bg-danger">Devendo</span>
               <span class="badge bg-success">Crédito</span>
               <span class="badge bg-secondary">Zerado</span>
@@ -68,11 +79,12 @@
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="p-3 border rounded bg-light h-100">
             <div class="text-muted small">Observação</div>
             <div class="small">
-              Saldos negativos indicam <b>valores a receber</b>.
+              Saldo <span class="text-danger fw-bold">negativo</span> indica <b>valores a receber</b>.
+              Saldo <span class="text-success fw-bold">positivo</span> indica <b>crédito do cliente</b>.
             </div>
           </div>
         </div>
@@ -138,7 +150,7 @@
       </div>
 
       <div class="text-muted small mt-2">
-        Dica: use o filtro para listar somente clientes <b>devendo</b> (negativos) e priorizar cobranças.
+        Dica: filtre por <b>Negativos</b> e use a busca para encontrar rapidamente um cliente.
       </div>
     </div>
   </div>

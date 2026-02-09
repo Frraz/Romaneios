@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Dashboard (Core)</h1>
+
+  <p><strong>Mês/Ano:</strong> {{ mes }}/{{ ano }}</p>
+
+  <ul>
+    <li><strong>Total m³ no mês:</strong> {{ total_m3_mes }}</li>
+    <li><strong>Total faturado no mês:</strong> {{ total_faturado_mes }}</li>
+    <li><strong>Qtd romaneios no mês:</strong> {{ qtd_romaneios_mes }}</li>
+    <li><strong>Saldo total a receber:</strong> {{ saldo_total_receber }}</li>
+  </ul>
+{% endblock %}

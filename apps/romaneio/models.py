@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
@@ -5,8 +7,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
 
-from apps.cadastros.models import Cliente, TipoMadeira, Motorista
-
+from apps.cadastros.models import Cliente, Motorista, TipoMadeira
 
 QTD_M3_STEP = Decimal("0.001")
 VALOR_STEP = Decimal("0.01")
@@ -58,15 +59,19 @@ class Romaneio(models.Model):
         verbose_name = "Romaneio"
         verbose_name_plural = "Romaneios"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"Romaneio {self.numero_romaneio} ({self.get_modalidade_display()})"
             f" - {self.cliente.nome} - {self.data_romaneio:%d/%m/%Y}"
         )
 
-    def atualizar_totais(self, *, save=True):
+    def atualizar_totais(self, *, save: bool = True) -> None:
         """
         Atualiza valor_bruto, valor_total e m3_total com base nos itens.
+
+        Importante: este método soma *quantidade_m3_total* do ItemRomaneio.
+        No modo DETALHADO, quem garante que quantidade_m3_total esteja correto
+        é ItemRomaneio.atualizar_totais().
         """
         totais = self.itens.aggregate(
             total_valor=Sum("valor_total"),
@@ -92,6 +97,7 @@ class ItemRomaneio(models.Model):
 
     romaneio = models.ForeignKey(Romaneio, on_delete=models.CASCADE, related_name="itens")
     tipo_madeira = models.ForeignKey(TipoMadeira, on_delete=models.PROTECT, related_name="itens_romaneio")
+
     valor_unitario = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -119,23 +125,40 @@ class ItemRomaneio(models.Model):
         verbose_name = "Item do Romaneio"
         verbose_name_plural = "Itens do Romaneio"
 
-    def __str__(self):
+    def __str__(self) -> str:
         nome = self.tipo_madeira.nome if self.tipo_madeira else ""
         qtd_unidades = self.unidades.count()
         return f"{nome} - {qtd_unidades} unidade(s) - {self.quantidade_m3_total:.3f} m³"
 
-    def atualizar_totais(self, *, save=True, atualizar_romaneio=True):
+    def _get_modalidade_romaneio(self) -> str | None:
+        """
+        Retorna a modalidade do romaneio de forma robusta.
+
+        Em alguns fluxos (ex.: create via formset.save), self.romaneio pode não estar
+        carregado no objeto em memória; mas o romaneio_id existe. Então consultamos
+        o banco apenas se necessário.
+        """
+        if not self.romaneio_id:
+            return None
+
+        if getattr(self, "romaneio", None) is not None:
+            return self.romaneio.modalidade
+
+        return Romaneio.objects.only("modalidade").get(pk=self.romaneio_id).modalidade
+
+    def atualizar_totais(self, *, save: bool = True, atualizar_romaneio: bool = True) -> None:
         """
         Atualiza os totais deste item.
         - DETALHADO: soma unidades e sobrescreve quantidade_m3_total
         - SIMPLES: usa quantidade_m3_total informada
         """
-        if self.romaneio and self.romaneio.modalidade == "DETALHADO":
+        modalidade = self._get_modalidade_romaneio()
+
+        if modalidade == "DETALHADO":
             totais = self.unidades.aggregate(total_m3=Sum("quantidade_m3"))
             m3 = (totais["total_m3"] or Decimal("0.000")).quantize(QTD_M3_STEP, rounding=ROUND_HALF_UP)
             self.quantidade_m3_total = m3
         else:
-            # Normaliza entrada no simples
             self.quantidade_m3_total = (self.quantidade_m3_total or Decimal("0.000")).quantize(
                 QTD_M3_STEP, rounding=ROUND_HALF_UP
             )
@@ -152,15 +175,10 @@ class ItemRomaneio(models.Model):
 
     def save(self, *args, **kwargs):
         # Preço automático se possível e se valor_unitario estiver vazio/zerado
-        if (
-            (self.valor_unitario in (None, Decimal("0.00")))
-            and hasattr(self.tipo_madeira, "get_preco")
-            and self.romaneio_id
-        ):
+        if (self.valor_unitario in (None, Decimal("0.00"))) and self.romaneio_id and self.tipo_madeira_id:
             self.valor_unitario = self.tipo_madeira.get_preco(self.romaneio.tipo_romaneio)
 
-        # Antes de salvar, garante valor_total coerente (no simples)
-        # No detalhado, quantidade_m3_total será recalculada depois que unidades existirem.
+        # No SIMPLES, garantimos coerência do valor_total antes de salvar.
         if self.romaneio_id and self.romaneio.modalidade == "SIMPLES":
             self.quantidade_m3_total = (self.quantidade_m3_total or Decimal("0.000")).quantize(
                 QTD_M3_STEP, rounding=ROUND_HALF_UP
@@ -171,14 +189,11 @@ class ItemRomaneio(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Depois do save, no DETALHADO pode ter unidades já (update) e vale recalcular.
-        if self.romaneio_id and self.romaneio.modalidade == "DETALHADO":
-            # recalcula baseado em unidades e atualiza romaneio
-            self.atualizar_totais(save=True, atualizar_romaneio=True)
-        else:
-            # garante romaneio atualizado no simples também
-            if self.romaneio_id:
-                self.romaneio.atualizar_totais()
+        # Pós-save:
+        # - SIMPLES: atualiza romaneio imediatamente
+        # - DETALHADO: quem recalcula é UnidadeRomaneio.save/delete (e/ou a view ao final)
+        if self.romaneio_id and self.romaneio.modalidade == "SIMPLES":
+            self.romaneio.atualizar_totais()
 
     def delete(self, *args, **kwargs):
         rom = self.romaneio
@@ -211,10 +226,10 @@ class UnidadeRomaneio(models.Model):
         verbose_name = "Unidade do Romaneio"
         verbose_name_plural = "Unidades do Romaneio"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Unidade #{self.id} - {self.quantidade_m3:.3f} m³"
 
-    def calcular_m3_detalhado(self):
+    def calcular_m3_detalhado(self) -> Decimal | None:
         if self.rodo is None or self.comprimento is None:
             return None
 
@@ -228,15 +243,17 @@ class UnidadeRomaneio(models.Model):
         return m3_liquida.quantize(QTD_M3_STEP, rounding=ROUND_HALF_UP)
 
     def save(self, *args, **kwargs):
-        if self.item_id and self.item.romaneio_id and self.item.romaneio.modalidade == "DETALHADO":
-            m3_calc = self.calcular_m3_detalhado()
-            if m3_calc is not None:
-                self.quantidade_m3 = m3_calc
+        # No DETALHADO, só recalcula pela fórmula se quantidade_m3 estiver vazia/zerada.
+        if self.item_id and self.item._get_modalidade_romaneio() == "DETALHADO":
+            qtd_atual = self.quantidade_m3
+            if qtd_atual is None or qtd_atual <= Decimal("0.000"):
+                m3_calc = self.calcular_m3_detalhado()
+                if m3_calc is not None:
+                    self.quantidade_m3 = m3_calc
 
         super().save(*args, **kwargs)
 
         if self.item_id:
-            # Atualiza item e romaneio (uma vez)
             self.item.atualizar_totais(save=True, atualizar_romaneio=True)
 
     def delete(self, *args, **kwargs):

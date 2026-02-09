@@ -104,17 +104,32 @@ class ItemRomaneioForm(forms.ModelForm):
 
     def clean_quantidade_m3_total(self):
         """
-        Aceita qualquer valor >= 0 (inclusive 0 no DETALHADO durante submit).
-        O model/view vão recalcular após salvar unidades.
+        Normaliza e valida a quantidade total (m³).
+
+        Importante:
+        - O Model (`ItemRomaneio.quantidade_m3_total`) possui `MinValueValidator(0.001)`.
+        - No modo DETALHADO, o valor real será recalculado pela soma das unidades após salvar,
+          mas ainda precisamos salvar o Item inicialmente com um valor válido (>= 0.001),
+          senão o save pode falhar/inconsistir.
+
+        Regras:
+        - Não permite valor negativo.
+        - Se vier vazio/0.000, retorna 0.001 como placeholder válido.
         """
         qtd = self.cleaned_data.get("quantidade_m3_total")
+
         if qtd is None:
             qtd = Decimal("0.000")
 
         if qtd < Decimal("0.000"):
             raise ValidationError("A quantidade não pode ser negativa.")
 
-        return qtd
+        # Placeholder para compatibilidade com o validator do model.
+        # O valor final será recalculado no DETALHADO.
+        if qtd == Decimal("0.000"):
+            return Decimal("0.001")
+
+        return qtd.quantize(Decimal("0.001"))
 
 
 class BaseItemRomaneioFormSet(BaseInlineFormSet):

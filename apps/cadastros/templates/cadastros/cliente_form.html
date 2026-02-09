@@ -75,8 +75,11 @@
                     </div>
                 {% endif %}
                 <small class="form-text text-muted">
-                    Selecione <b>Pessoa Física</b> para CPF (<code>000.000.000-00</code>) 
-                    ou <b>Pessoa Jurídica</b> para CNPJ (<code>00.000.000/0000-00</code>).
+                    <strong>Opcional:</strong> preencha apenas se quiser informar e selecione o tipo.<br>
+                    <span class="d-block">
+                        <b>Pessoa Física:</b> CPF (<code>000.000.000-00</code>)<br>
+                        <b>Pessoa Jurídica:</b> CNPJ (<code>00.000.000/0000-00</code>)
+                    </span>
                 </small>
             </div>
 
@@ -116,7 +119,7 @@
                 {% endif %}
             </div>
 
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mt-4">
                 <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar
                 </a>
@@ -141,24 +144,19 @@ $(document).ready(function () {
         var tipo = $radios.filter(":checked").val(); // "F" ou "J"
         $campo.unmask();
         if (tipo === "J") {
-            // Pessoa Jurídica -> CNPJ
             $campo.mask("00.000.000/0000-00");
         } else {
-            // Pessoa Física -> CPF
             $campo.mask("000.000.000-00");
         }
     }
 
-    // Aplica máscara inicial conforme o tipo selecionado (padrão F)
     aplicarMascaraPorTipo();
 
-    // Ao trocar o tipo de pessoa, troca a máscara
     $radios.on("change", function () {
-        // Mantém apenas dígitos enquanto troca máscara
         var digitos = $campo.val().replace(/\D/g, "");
         aplicarMascaraPorTipo();
         $campo.val(digitos);
-        $campo.trigger("input"); // força reformatar conforme a máscara nova
+        $campo.trigger("input");
     });
 });
 </script>
