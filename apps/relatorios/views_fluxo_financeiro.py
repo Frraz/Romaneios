@@ -178,7 +178,7 @@ def _build_movimentacoes(vendas_qs: Iterable[Romaneio], pagamentos_qs: Iterable[
     movs_com_saldo = _calc_saldos_por_movimento(movs)
 
     # DESC para exibição
-    movs_com_saldo.sort(key=lambda x: (x.data, x.cliente_nome, (x.numero_romaneio or "")), reverse=True)
+    movs_com_saldo.sort(key=lambda x: (x.data, x.cliente_nome, (x.numero_romaneio or "")))
     return movs_com_saldo
 
 
