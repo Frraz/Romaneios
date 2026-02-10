@@ -3,86 +3,266 @@
 <head>
   <meta charset="utf-8" />
   <title>Fluxo Financeiro {{ mes }}/{{ ano }}</title>
+
   <style>
+    /* ===== Página / impressão ===== */
     @page {
       size: A4;
       margin: 16mm 14mm;
+
       @bottom-right {
         content: "Página " counter(page) " de " counter(pages);
         font-size: 10px;
         color: #666;
       }
     }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; }
-    .header { border-bottom: 2px solid #246b29; padding-bottom: 8px; margin-bottom: 12px; }
-    .title { font-size: 16px; font-weight: 800; margin: 0; }
-    .sub { color: #666; font-size: 11px; margin-top: 2px; }
-    .kpis { margin: 10px 0 12px 0; }
-    .kpis b { color: #246b29; }
-    h3 { margin: 16px 0 8px 0; font-size: 13px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #cfd4dc; padding: 6px; font-size: 11px; }
-    th { background: #eef3ef; text-align: left; }
+
+    :root{
+      --brand: #246b29;
+      --text: #222;
+      --muted: #666;
+      --line: #cfd4dc;
+      --head: #eef3ef;
+      --soft: #f6f7f8;
+
+      --ok: #198754;
+      --bad: #dc3545;
+      --info: #0d6efd;
+    }
+
+    html, body { padding: 0; margin: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* ===== Cabeçalho ===== */
+    .header {
+      border-bottom: 2px solid var(--brand);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .header table { width: 100%; border-collapse: collapse; }
+    .title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.1;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .right { text-align: right; }
+
+    /* ===== Filtros (linha) ===== */
+    .filters {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .filters b { color: var(--text); }
+
+    /* ===== KPIs ===== */
+    .kpis {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0 12px 0;
+    }
+    .kpis table { width: 100%; border-collapse: collapse; }
+    .kpis td { padding: 2px 6px; }
+    .k {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .v {
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .v.vendas { color: var(--info); }
+    .v.pagamentos { color: var(--ok); }
+    .v.saldo-pos { color: var(--ok); }
+    .v.saldo-neg { color: var(--bad); }
+    .v.saldo-zero { color: #444; }
+
+    /* ===== Tabela ===== */
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    table.tbl th, table.tbl td {
+      border: 1px solid var(--line);
+      padding: 6px;
+      font-size: 11px;
+      vertical-align: top;
+    }
+    table.tbl th {
+      background: var(--head);
+      text-align: left;
+      font-weight: 800;
+    }
+
     .num { text-align: right; white-space: nowrap; }
+    .center { text-align: center; white-space: nowrap; }
+    .muted { color: var(--muted); }
+
+    /* Zebra */
+    table.tbl tbody tr:nth-child(even) td { background: #fafafa; }
+
+    /* Repetir cabeçalho */
     thead { display: table-header-group; }
+
+    /* Evitar quebra feia em linhas */
+    tr { page-break-inside: avoid; }
+
+    /* Destaques */
+    .txt-venda { color: var(--info); font-weight: 800; }
+    .txt-credito { color: var(--ok); font-weight: 800; }
+    .saldo-neg { color: var(--bad); font-weight: 900; }
+    .saldo-pos { color: var(--ok); font-weight: 900; }
+    .saldo-zero { color: #444; font-weight: 900; }
+
+    .footer-note{
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--muted);
+    }
   </style>
 </head>
+
 <body>
   <div class="header">
-    <p class="title">Fluxo Financeiro — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
-    <div class="sub">Gerado em: {{ now|date:"d/m/Y H:i" }}</div>
+    <table>
+      <tr>
+        <td>
+          <p class="title">Fluxo Financeiro — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
+          <div class="sub">Gerado em: {{ now|date:"d/m/Y H:i" }}</div>
+
+          <div class="filters">
+            {% if numero_romaneio %}
+              Nº Romaneio: <b>#{{ numero_romaneio }}</b> &nbsp;|&nbsp;
+            {% endif %}
+            {% if madeira_nome %}
+              Madeira: <b>{{ madeira_nome }}</b>
+            {% endif %}
+          </div>
+        </td>
+
+        <td class="right">
+          <div class="sub"><b>Resumo</b></div>
+          <div class="sub">Período selecionado</div>
+        </td>
+      </tr>
+    </table>
   </div>
 
   <div class="kpis">
-    Vendas: <b>R$ {{ vendas_total|floatformat:2 }}</b> &nbsp;&nbsp;
-    Pagamentos: <b>R$ {{ pagamentos_total|floatformat:2 }}</b> &nbsp;&nbsp;
-    Saldo: <b>R$ {{ saldo|floatformat:2 }}</b>
+    <table>
+      <tr>
+        <td style="width:33.33%;">
+          <div class="k">Vendas</div>
+          <div class="v vendas">R$ {{ vendas_total|floatformat:2 }}</div>
+        </td>
+        <td style="width:33.33%;">
+          <div class="k">Pagamentos</div>
+          <div class="v pagamentos">R$ {{ pagamentos_total|floatformat:2 }}</div>
+        </td>
+        <td style="width:33.33%;">
+          <div class="k">Saldo (Pagamentos − Vendas)</div>
+          {% if saldo > 0 %}
+            <div class="v saldo-pos">R$ {{ saldo|floatformat:2 }}</div>
+          {% elif saldo < 0 %}
+            <div class="v saldo-neg">R$ {{ saldo|floatformat:2 }}</div>
+          {% else %}
+            <div class="v saldo-zero">R$ {{ saldo|floatformat:2 }}</div>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
   </div>
 
-  <h3>Vendas</h3>
-  <table>
+  <table class="tbl">
     <thead>
       <tr>
-        <th style="width:110px;">Data</th>
+        <th style="width:90px;">Data</th>
+        <th style="width:95px;" class="center">Nº Romaneio</th>
         <th>Cliente</th>
-        <th class="num" style="width:150px;">Valor</th>
+        <th style="width:70px;" class="num">M³</th>
+        <th style="width:110px;" class="num">Total (R$)</th>
+        <th style="width:110px;" class="num">Crédito (R$)</th>
+        <th style="width:120px;" class="num">Saldo atual (R$)</th>
       </tr>
     </thead>
+
     <tbody>
-      {% for v in vendas %}
-      <tr>
-        <td>{{ v.data_romaneio|date:"d/m/Y" }}</td>
-        <td>{{ v.cliente.nome }}</td>
-        <td class="num">R$ {{ v.valor_total|floatformat:2 }}</td>
-      </tr>
+      {% for m in movimentacoes %}
+        <tr>
+          <td>{{ m.data|date:"d/m/Y" }}</td>
+
+          <td class="center">
+            {% if m.numero_romaneio %}
+              {{ m.numero_romaneio }}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+
+          <td>{{ m.cliente_nome }}</td>
+
+          <td class="num">
+            {% if m.m3 is not None %}
+              {{ m.m3|floatformat:3 }}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="num">
+            {% if m.total is not None %}
+              <span class="txt-venda">R$ {{ m.total|floatformat:2 }}</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="num">
+            {% if m.credito is not None %}
+              <span class="txt-credito">R$ {{ m.credito|floatformat:2 }}</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="num">
+            {% if m.saldo_atual < 0 %}
+              <span class="saldo-neg">- R$ {{ m.saldo_atual|floatformat:2|cut:"-" }}</span>
+            {% elif m.saldo_atual > 0 %}
+              <span class="saldo-pos">R$ {{ m.saldo_atual|floatformat:2 }}</span>
+            {% else %}
+              <span class="saldo-zero">R$ {{ m.saldo_atual|floatformat:2 }}</span>
+            {% endif %}
+          </td>
+        </tr>
       {% empty %}
-      <tr><td colspan="3" style="color:#888; text-align:center;">Nenhuma venda.</td></tr>
+        <tr>
+          <td colspan="7" class="center muted" style="padding:10px;">
+            Nenhuma movimentação encontrada para este período.
+          </td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <h3>Pagamentos</h3>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:110px;">Data</th>
-        <th>Cliente</th>
-        <th style="width:160px;">Tipo</th>
-        <th class="num" style="width:150px;">Valor</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in pagamentos %}
-      <tr>
-        <td>{{ p.data_pagamento|date:"d/m/Y" }}</td>
-        <td>{{ p.cliente.nome }}</td>
-        <td>{{ p.get_tipo_pagamento_display }}</td>
-        <td class="num">R$ {{ p.valor|floatformat:2 }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="4" style="color:#888; text-align:center;">Nenhum pagamento.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="footer-note">
+    Documento gerado automaticamente pelo sistema MadereiraJD.
+  </div>
 </body>
 </html>
