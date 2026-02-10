@@ -2,29 +2,89 @@
 {% block title %}Confirmar Exclusão de Cliente{% endblock %}
 
 {% block content %}
-<div class="card mx-auto mt-5 shadow-sm" style="max-width: 560px;">
-    <div class="card-header bg-danger text-white">
-        <i class="fas fa-user-times"></i> Excluir Cliente
-    </div>
-    <div class="card-body">
-        <form method="post">
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between">
+          <div class="fw-bold">
+            <i class="fas fa-user-times"></i> Excluir Cliente
+          </div>
+          <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-sm btn-outline-light" title="Voltar">
+            <i class="fas fa-arrow-left"></i>
+          </a>
+        </div>
+
+        <div class="card-body">
+          <form method="post">
             {% csrf_token %}
+
             <p class="mb-3">
-                Tem certeza que deseja <b>excluir</b> o cliente <strong>{{ object.nome }}</strong>?
+              Tem certeza que deseja <b>excluir</b> o cliente <strong>{{ object.nome }}</strong>?
+              <br><span class="text-muted small">Essa ação não pode ser desfeita.</span>
             </p>
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Esta ação <b>não pode ser desfeita</b>. Todos os registros vinculados ficarão sem cliente.
+
+            {% if romaneios_count or pagamentos_count %}
+              <div class="alert alert-warning mb-3" role="alert">
+                <strong>Atenção:</strong>
+                Este cliente possui
+                {% if romaneios_count %} <span class="fw-bold text-danger">{{ romaneios_count }} romaneio{{ romaneios_count|pluralize:"s" }}</span>{% endif %}
+                {% if romaneios_count and pagamentos_count %} e{% endif %}
+                {% if pagamentos_count %} <span class="fw-bold text-success">{{ pagamentos_count }} pagamento{{ pagamentos_count|pluralize:"s" }}</span>{% endif %}
+                vinculados.
+                <br>
+                Não será possível excluir enquanto existirem esses vínculos.
+              </div>
+              <div class="bg-light p-2 rounded border mb-3">
+                <ul class="mb-2">
+                  {% if romaneios_count > 0 %}
+                    <li><b>Romaneios:</b>
+                      <ul>
+                        {% for r in romaneios_vinculados|slice:":5" %}
+                          <li>
+                            #{{ r.numero_romaneio }} - {{ r.data_romaneio|date:"d/m/Y" }} ({{ r.get_modalidade_display }})
+                          </li>
+                        {% endfor %}
+                        {% if romaneios_count > 5 %}
+                          <li>... e mais {{ romaneios_count|add:"-5" }} romaneio(s)</li>
+                        {% endif %}
+                      </ul>
+                    </li>
+                  {% endif %}
+                  {% if pagamentos_count > 0 %}
+                    <li><b>Pagamentos:</b>
+                      <ul>
+                        {% for p in pagamentos_vinculados|slice:":5" %}
+                          <li>
+                            {{ p.data_pagamento|date:"d/m/Y" }} - R$ {{ p.valor|floatformat:2 }} ({{ p.get_tipo_pagamento_display }})
+                          </li>
+                        {% endfor %}
+                        {% if pagamentos_count > 5 %}
+                          <li>... e mais {{ pagamentos_count|add:"-5" }} pagamento(s)</li>
+                        {% endif %}
+                      </ul>
+                    </li>
+                  {% endif %}
+                </ul>
+              </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="submit" class="btn btn-danger" {% if romaneios_count or pagamentos_count %}disabled{% endif %}>
+                <i class="fas fa-trash-alt"></i> Excluir
+              </button>
+              <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-outline-secondary">
+                Cancelar
+              </a>
             </div>
-            <div class="d-flex justify-content-between mt-4">
-                <a href="{% url 'cadastros:cliente_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Cancelar
-                </a>
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-trash-alt"></i> Excluir
-                </button>
-            </div>
-        </form>
+          </form>
+        </div>
+      </div>
+
+      <div class="text-muted small mt-2">
+        Dica: Para excluir um cliente, primeiro exclua ou remova todos os vínculos de romaneios e pagamentos.
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

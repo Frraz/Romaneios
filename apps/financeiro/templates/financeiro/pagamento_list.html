@@ -2,118 +2,200 @@
 {% block title %}Pagamentos{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-money-bill-wave"></i> Lista de Pagamentos</span>
-            <a href="{% url 'financeiro:pagamento_create' %}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Novo Pagamento
-            </a>
-        </div>
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="fw-bold">
+        <i class="fas fa-money-bill-wave"></i> Pagamentos
+      </div>
+
+      <a href="{% url 'financeiro:pagamento_create' %}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Novo Pagamento
+      </a>
     </div>
+
     <div class="card-body">
-        <!-- Filtros -->
-        <form method="get" class="row gx-2 gy-2 mb-3">
-            <div class="col-md-3">
-                <select name="cliente" class="form-select">
-                    <option value="">Todos os Clientes</option>
-                    {% for cliente in clientes %}
-                    <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
-                        {{ cliente.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="mes" class="form-select">
-                    <option value="">Mês</option>
-                    {% for m in "123456789012" %}
-                    <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>{{ forloop.counter }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="ano" class="form-select">
-                    <option value="">Ano</option>
-                    {% for i in "012" %}
-                        {% with ano_val=2024|add:forloop.counter0 %}
-                        <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>{{ ano_val }}</option>
-                        {% endwith %}
-                    {% endfor %}
-                    {# Melhor ainda: passe lista de anos pelo contexto: context['anos'] = [2024,2025,2026] #}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter"></i> Filtrar
-                </button>
-            </div>
-        </form>
-
-        <!-- Total do período -->
-        <div class="mb-3">
-            <span class="badge bg-success me-2">
-                <i class="fas fa-dollar-sign"></i> Total Período: R$ {{ total_periodo|floatformat:2 }}
-            </span>
-            <span class="text-muted ms-2">({{ pagamentos|length }} pagamentos)</span>
+      {# ===== Filtros ===== #}
+      <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-12 col-md-5 col-lg-4">
+          <label class="form-label">Cliente</label>
+          <select name="cliente" class="form-select">
+            <option value="">Todos os Clientes</option>
+            {% for cliente in clientes %}
+              <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
+                {{ cliente.nome }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Tabela de pagamentos -->
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Data</th>
-                        <th>Cliente</th>
-                        <th class="text-end">Valor</th>
-                        <th>Tipo</th>
-                        <th>Descrição</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for pagamento in pagamentos %}
-                    <tr>
-                        <td>{{ pagamento.data_pagamento|date:"d/m/Y" }}</td>
-                        <td>{{ pagamento.cliente.nome }}</td>
-                        <td class="text-end text-success">R$ {{ pagamento.valor|floatformat:2 }}</td>
-                        <td>
-                            <span class="badge bg-info text-dark">{{ pagamento.get_tipo_pagamento_display }}</span>
-                        </td>
-                        <td class="text-muted">{{ pagamento.descricao|default:"—" }}</td>
-                        <td class="text-end">
-                            <a href="{% url 'financeiro:pagamento_update' pagamento.id %}" class="btn btn-sm btn-primary" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Nenhum pagamento encontrado para os filtros aplicados.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label">Mês</label>
+          <select name="mes" class="form-select">
+            <option value="">Mês</option>
+            {% for m in "123456789012" %}
+              <option value="{{ forloop.counter }}" {% if forloop.counter|stringformat:"s" == request.GET.mes %}selected{% endif %}>
+                {{ forloop.counter|stringformat:"02d" }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Paginação -->
-        {% if is_paginated %}
-        <nav>
-            <ul class="pagination justify-content-center">
-                {% with params=request.GET.urlencode|cut:'page=' %}
-                    {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page=1{{ params }}">&laquo; Primeiro</a></li>
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ params }}">&lsaquo; Anterior</a></li>
-                    {% endif %}
-                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
-                    {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{{ params }}">Próxima &rsaquo;</a></li>
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ params }}">Última &raquo;</a></li>
-                    {% endif %}
-                {% endwith %}
-            </ul>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label">Ano</label>
+          <select name="ano" class="form-select">
+            <option value="">Ano</option>
+            {% for i in "012" %}
+              {% with ano_val=2024|add:forloop.counter0 %}
+                <option value="{{ ano_val }}" {% if request.GET.ano == ano_val|stringformat:"s" %}selected{% endif %}>
+                  {{ ano_val }}
+                </option>
+              {% endwith %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Filtrar
+          </button>
+        </div>
+
+        <div class="col-12 col-md-3 col-lg-2 d-grid">
+          <a href="{% url 'financeiro:pagamento_list' %}" class="btn btn-outline-secondary" title="Limpar filtros">
+            <i class="fas fa-eraser"></i> Limpar
+          </a>
+        </div>
+
+        <div class="col-12 col-lg text-lg-end text-muted small">
+          {% if request.GET.cliente %}
+            Cliente: <b>
+              {% for c in clientes %}
+                {% if c.id|stringformat:"s" == request.GET.cliente %}{{ c.nome }}{% endif %}
+              {% endfor %}
+            </b>
+            &nbsp;|&nbsp;
+          {% endif %}
+          {% if request.GET.mes or request.GET.ano %}
+            Período: <b>
+              {{ request.GET.mes|default:"—"|stringformat:"02d" }}/{{ request.GET.ano|default:"—" }}
+            </b>
+          {% else %}
+            Período: <b>{{ now|date:"m/Y" }}</b>
+          {% endif %}
+        </div>
+      </form>
+
+      {# ===== Resumo do período ===== #}
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+          <span class="badge bg-success">
+            <i class="fas fa-dollar-sign"></i> Total Período: R$ {{ total_periodo|floatformat:2 }}
+          </span>
+          <span class="text-muted ms-2">
+            ({{ page_obj.paginator.count }} pagamento{{ page_obj.paginator.count|pluralize:"s" }})
+          </span>
+        </div>
+      </div>
+
+      {# ===== Tabela ===== #}
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:110px;">Data</th>
+              <th>Cliente</th>
+              <th class="text-end" style="width:140px;">Valor</th>
+              <th style="width:160px;">Tipo</th>
+              <th>Descrição</th>
+              <th class="text-end" style="width:120px;">Ações</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for pagamento in pagamentos %}
+              <tr>
+                <td class="text-nowrap">
+                  <i class="far fa-calendar-alt text-muted"></i>
+                  {{ pagamento.data_pagamento|date:"d/m/Y" }}
+                </td>
+
+                <td>{{ pagamento.cliente.nome }}</td>
+
+                <td class="text-end fw-bold text-success">
+                  R$ {{ pagamento.valor|floatformat:2 }}
+                </td>
+
+                <td>
+                  <span class="badge bg-info text-dark">
+                    {{ pagamento.get_tipo_pagamento_display }}
+                  </span>
+                </td>
+
+                <td class="text-muted">
+                  {{ pagamento.descricao|default:"—" }}
+                </td>
+
+                <td class="text-end">
+                <div class="btn-group" role="group">
+                    <a href="{% url 'financeiro:pagamento_update' pagamento.id %}"
+                    class="btn btn-sm btn-outline-primary"
+                    title="Editar pagamento">
+                    <i class="fas fa-edit"></i>
+                    </a>
+
+                    <a href="{% url 'financeiro:pagamento_delete' pagamento.id %}"
+                    class="btn btn-sm btn-outline-danger"
+                    title="Excluir pagamento">
+                    <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                  Nenhum pagamento encontrado para os filtros aplicados.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {# ===== Paginação ===== #}
+      {% if is_paginated %}
+        <nav aria-label="Paginação" class="mt-3">
+          <ul class="pagination justify-content-center flex-wrap">
+            {% with params=request.GET.urlencode|cut:'page=' %}
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1{% if params %}&{{ params }}{% endif %}">&laquo; Primeiro</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if params %}&{{ params }}{% endif %}">&lsaquo; Anterior</a>
+                </li>
+              {% endif %}
+
+              <li class="page-item disabled">
+                <span class="page-link">
+                  Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                </span>
+              </li>
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if params %}&{{ params }}{% endif %}">Próxima &rsaquo;</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if params %}&{{ params }}{% endif %}">Última &raquo;</a>
+                </li>
+              {% endif %}
+            {% endwith %}
+          </ul>
         </nav>
-        {% endif %}
+      {% endif %}
     </div>
+  </div>
 </div>
 {% endblock %}

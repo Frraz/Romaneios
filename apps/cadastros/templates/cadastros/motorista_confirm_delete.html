@@ -1,11 +1,49 @@
 {% extends "base.html" %}
+{% block title %}Confirmar Exclusão do Motorista{% endblock %}
 
 {% block content %}
-<h1>Excluir motorista</h1>
-<form method="post">
-  {% csrf_token %}
-  <p>Confirma excluir "{{ object }}"?</p>
-  <button type="submit">Excluir</button>
-  <a href="{% url 'cadastros:motorista_list' %}">Cancelar</a>
-</form>
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-7 col-xl-6">
+      <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between">
+          <div class="fw-bold">
+            <i class="fas fa-user-times"></i> Excluir Motorista
+          </div>
+          <a href="{% url 'cadastros:motorista_list' %}" class="btn btn-sm btn-outline-light" title="Voltar">
+            <i class="fas fa-arrow-left"></i>
+          </a>
+        </div>
+
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <p class="mb-3">
+              Tem certeza que deseja <b>excluir</b> o motorista <strong>{{ object.nome }}</strong>?
+              <br><span class="text-muted small">Essa ação não pode ser desfeita.</span>
+            </p>
+
+            <div class="alert alert-danger mb-3">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Atenção: Se houver romaneios vinculados ao motorista, os romaneios ficarão sem motorista.
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash-alt"></i> Excluir
+              </button>
+              <a href="{% url 'cadastros:motorista_list' %}" class="btn btn-outline-secondary">
+                Cancelar
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="text-muted small mt-2">
+        Dica: Se aparecer mensagem de erro ao excluir, revise possíveis romaneios vinculados.
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

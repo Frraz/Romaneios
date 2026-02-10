@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir Pagamento{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between">
+          <div class="fw-bold">
+            <i class="fas fa-exclamation-triangle me-2"></i> Confirmar exclusão
+          </div>
+          <a href="{% url 'financeiro:pagamento_list' %}" class="btn btn-sm btn-outline-light" title="Voltar">
+            <i class="fas fa-arrow-left"></i>
+          </a>
+        </div>
+
+        <div class="card-body">
+          <p class="mb-3">
+            Você está prestes a excluir este pagamento. <b>Essa ação não pode ser desfeita.</b>
+          </p>
+
+          <div class="p-3 rounded border bg-light">
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="text-muted small">Data</div>
+                <div class="fw-bold">{{ object.data_pagamento|date:"d/m/Y" }}</div>
+              </div>
+
+              <div class="col-6">
+                <div class="text-muted small">Tipo</div>
+                <div class="fw-bold">
+                  {{ object.get_tipo_pagamento_display|default:"—" }}
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="text-muted small">Cliente</div>
+                <div class="fw-bold">{{ object.cliente.nome|default:"—" }}</div>
+              </div>
+
+              <div class="col-12">
+                <div class="text-muted small">Valor</div>
+                <div class="fw-bold text-success fs-5">
+                  R$ {{ object.valor|floatformat:2 }}
+                </div>
+              </div>
+
+              {% if object.descricao %}
+                <div class="col-12">
+                  <div class="text-muted small">Descrição</div>
+                  <div class="fw-bold">{{ object.descricao }}</div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="alert alert-warning mt-3 mb-0" role="alert">
+            <div class="fw-bold mb-1">
+              <i class="fas fa-info-circle me-1"></i> Atenção
+            </div>
+            Ao excluir, o saldo do cliente poderá ser recalculado/alterado no fluxo financeiro.
+          </div>
+        </div>
+
+        <div class="card-footer bg-white">
+          <form method="post" class="d-flex flex-wrap gap-2 justify-content-end">
+            {% csrf_token %}
+            <a href="{% url 'financeiro:pagamento_list' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-times"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash"></i> Excluir pagamento
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="text-muted small mt-2">
+        Dica: se você clicou em excluir por engano, use <b>Cancelar</b>.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

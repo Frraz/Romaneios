@@ -16,6 +16,8 @@ from django.db.models import ExpressionWrapper, DecimalField
 from decimal import Decimal
 from django.db.models import DecimalField, ExpressionWrapper, F, Subquery, Value
 from django.db.models.functions import Coalesce
+from django.db.models.deletion import ProtectedError
+from django.shortcuts import redirect
 
 
 # ========== MIXINS ==========
@@ -123,9 +125,40 @@ class ClienteDeleteView(LoginRequiredMixin, DeleteView):
     template_name = "cadastros/cliente_confirm_delete.html"
     success_url = reverse_lazy("cadastros:cliente_list")
 
-    def delete(self, request, *args, **kwargs):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cliente = self.object
+
+        # Vínculos para mostrar no template de confirmação
+        context["romaneios_vinculados"] = Romaneio.objects.filter(cliente=cliente)
+        context["pagamentos_vinculados"] = Pagamento.objects.filter(cliente=cliente)
+
+        context["romaneios_count"] = context["romaneios_vinculados"].count()
+        context["pagamentos_count"] = context["pagamentos_vinculados"].count()
+
+        return context
+
+    def form_valid(self, form):
+        self.object = self.get_object()
+
+        try:
+            response = super().form_valid(form)
+        except ProtectedError:
+            # Conta todos os vínculos
+            roms = Romaneio.objects.filter(cliente=self.object)
+            pgs = Pagamento.objects.filter(cliente=self.object)
+            qtd_rom = roms.count()
+            qtd_pag = pgs.count()
+
+            msg = (
+                f"Não é possível excluir o cliente '{self.object.nome}' porque existem "
+                f"{qtd_rom} romaneio(s) e {qtd_pag} pagamento(s) vinculados a ele."
+            )
+            messages.error(self.request, msg)
+            return redirect(self.success_url)
+
         messages.success(self.request, "Cliente excluído com sucesso!")
-        return super().delete(request, *args, **kwargs)
+        return response
 
 
 # ========== TIPOS DE MADEIRA ==========
