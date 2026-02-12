@@ -115,19 +115,13 @@
                 {% if page_obj.has_previous %}
                 <li class="page-item">
                     <a class="page-link"
-                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
-                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
-                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
-                              page=1">
+                    href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}{% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}page=1" aria-label="Primeira página">
                         &laquo; Primeiro
                     </a>
                 </li>
                 <li class="page-item">
                     <a class="page-link"
-                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
-                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
-                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
-                              page={{ page_obj.previous_page_number }}">
+                    href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}{% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
                         &lsaquo; Anterior
                     </a>
                 </li>
@@ -140,19 +134,13 @@
                 {% if page_obj.has_next %}
                 <li class="page-item">
                     <a class="page-link"
-                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
-                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
-                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
-                              page={{ page_obj.next_page_number }}">
+                    href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}{% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Próxima página">
                         Próxima &rsaquo;
                     </a>
                 </li>
                 <li class="page-item">
                     <a class="page-link"
-                       href="?{% if q %}q={{ q|urlencode }}&{% endif %}
-                              {% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}
-                              {% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}
-                              page={{ page_obj.paginator.num_pages }}">
+                    href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if saldo %}saldo={{ saldo|urlencode }}&{% endif %}{% if ordenar %}ordenar={{ ordenar|urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Última página">
                         Última &raquo;
                     </a>
                 </li>
