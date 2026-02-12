@@ -30,6 +30,10 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost 127.0.0.1")
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+AUTHENTICATION_BACKENDS = [
+    'apps.core.auth_backends.UsernameOrEmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # Para o reset de senha (links no e-mail)
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "127.0.0.1:8000")

@@ -20,13 +20,25 @@ from django.db.models.deletion import ProtectedError
 from django.shortcuts import redirect
 
 
-# ========== MIXINS ==========
-
 class StaffRequiredMixin(UserPassesTestMixin):
-    """Restringe o acesso a usuários staff (e opcionalmente superusers no queryset)."""
+    """
+    Restringe acesso apenas para usuários staff.
+    Em caso de acesso negado, redireciona para o dashboard de relatórios
+    com mensagem amigável.
+    """
+
+    permission_denied_message = "Você não tem permissão para acessar esta área."
+    login_url = reverse_lazy("login")
 
     def test_func(self):
-        return self.request.user.is_staff
+        return self.request.user.is_authenticated and self.request.user.is_staff
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect(self.login_url)
+
+        messages.error(self.request, self.permission_denied_message)
+        return redirect(reverse_lazy("relatorios:dashboard"))
 
 
 # ========== CLIENTES ==========
@@ -296,10 +308,18 @@ class UsuarioCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
         return UserSuperForm if self.request.user.is_superuser else UserStaffForm
 
     def form_valid(self, form):
-        # Define senha padrão na criação
-        form.instance.set_password("123456")
+        user = form.save(commit=False)
+
+        # Define senha padrão
+        user.set_password("123456")
+
+        # Garante que novos usuários criados por staff já sejam staff
+        user.is_staff = True
+
+        user.save()
+
         messages.success(self.request, "Usuário cadastrado com sucesso! (Senha padrão: 123456)")
-        return super().form_valid(form)
+        return redirect(self.success_url)
 
 
 class UsuarioUpdateView(LoginRequiredMixin, StaffRequiredMixin, UpdateView):

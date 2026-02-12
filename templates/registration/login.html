@@ -58,8 +58,26 @@
         width: 200px;
         height: 200px;
         object-fit: contain;
-        filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+        
         animation: float 3s ease-in-out infinite;
+        border-radius: 20px;
+
+        /* Sombra mais suave e profissional */
+        filter: drop-shadow(0 16px 10px rgba(0, 0, 0, 0.25));
+
+        /* Animação mais sutil */
+        animation: softFloat 4s ease-in-out infinite;
+
+    }
+
+    /* Nova animação mais leve */
+    @keyframes softFloat {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-5px);
+        }
     }
 
     .login-title {
@@ -320,7 +338,8 @@
                 <!-- Header com Logo -->
                 <div class="login-header">
                     <div class="logo-container">
-                        <img src="/media/logo.png" 
+                        <!-- <img src="/media/logo.png" -->
+                        <img src="/media/image.png"
                              alt="Logo Madeireira JD" 
                              class="logo-image"
                              onerror="this.style.display='none'">
@@ -364,7 +383,7 @@
                         <!-- Campo Usuário -->
                         <div class="mb-3">
                             <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
-                                Usuário
+                                Usuário ou E-mail
                             </label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text bg-light">
@@ -376,7 +395,7 @@
                                     id="{{ form.username.id_for_label }}"
                                     value="{{ form.username.value|default_if_none:'' }}"
                                     class="form-control"
-                                    placeholder="Digite seu usuário"
+                                    placeholder="Digite seu usuário ou E-mail"
                                     required
                                     autofocus
                                     autocomplete="username"

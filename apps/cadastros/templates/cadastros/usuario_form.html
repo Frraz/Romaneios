@@ -4,56 +4,123 @@
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 550px;">
-    <h2 class="mb-4">
-        {% if form.instance.pk %}
-            <i class="fas fa-user-edit"></i> Editar usuário
-        {% else %}
-            <i class="fas fa-user-plus"></i> Novo usuário
-        {% endif %}
-    </h2>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
 
-    {% if form.errors %}
-        <div class="alert alert-danger">
-            <strong>Por favor, corrija os erros abaixo:</strong>
-            <ul class="mb-0">
-            {% for field in form %}
-                {% for error in field.errors %}
-                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                <li>{{ error }}</li>
-            {% endfor %}
-            </ul>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0 text-white">
+                        {% if form.instance.pk %}
+                            <i class="fas fa-user-edit me-2 text-white"></i>Editar usuário
+                        {% else %}
+                            <i class="fas fa-user-plus me-2 text-white"></i>Novo usuário
+                        {% endif %}
+                    </h4>
+                </div>
+
+
+                <div class="card-body">
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong><i class="fas fa-exclamation-circle me-1"></i> Atenção!</strong>
+                            <p class="mb-1">Por favor, corrija os erros abaixo:</p>
+                            <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row">
+                            {% for field in form %}
+                                <div class="col-12 mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                                        {{ field.label }}
+                                        {% if field.field.required %}
+                                            <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </label>
+
+                                    <div class="input-group">
+                                        {% if field.name == "username" %}
+                                            <span class="input-group-text">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        {% elif field.name == "email" %}
+                                            <span class="input-group-text">
+                                                <i class="fas fa-envelope"></i>
+                                            </span>
+                                        {% elif field.name == "first_name" or field.name == "last_name" %}
+                                            <span class="input-group-text">
+                                                <i class="fas fa-id-card"></i>
+                                            </span>
+                                        {% endif %}
+
+                                        {{ field }}
+                                    </div>
+
+                                    {% if field.help_text %}
+                                        <div class="form-text">
+                                            {{ field.help_text }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        {% if not form.instance.pk %}
+                            <div class="alert alert-info alert-fixed mb-3">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-2 fs-5">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </div>
+                                    <div>
+                                        <strong>Atenção:</strong> este usuário será criado com a senha inicial  
+                                        <span class="badge bg-light text-dark ms-1">123456</span>
+                                        
+                                        <div class="small mt-1">
+                                            Recomendamos que a senha seja alterada no primeiro acesso por questões de segurança.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'cadastros:usuario_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Voltar
+                            </a>
+
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-save me-1"></i>
+                                {% if form.instance.pk %}
+                                    Salvar alterações
+                                {% else %}
+                                    Criar usuário
+                                {% endif %}
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
         </div>
-    {% endif %}
-
-    <form method="post" novalidate>
-        {% csrf_token %}
-        {% for field in form %}
-            <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                {{ field }}
-                {% if field.help_text %}
-                    <div class="form-text">{{ field.help_text }}</div>
-                {% endif %}
-            </div>
-        {% endfor %}
-
-        {% if not form.instance.pk %}
-            <div class="alert alert-info small mb-3">
-                <i class="fas fa-key"></i>
-                O usuário receberá a senha inicial <strong>123456</strong>. Após o primeiro acesso, altere a senha pelo painel de admin ou peça que o usuário altere.
-            </div>
-        {% endif %}
-
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Salvar
-        </button>
-        <a href="{% url 'cadastros:usuario_list' %}" class="btn btn-secondary ms-2">
-            Cancelar
-        </a>
-    </form>
+    </div>
 </div>
 {% endblock %}
