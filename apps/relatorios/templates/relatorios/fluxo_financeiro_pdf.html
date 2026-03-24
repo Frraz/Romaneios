@@ -2,10 +2,9 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Fluxo Financeiro {{ mes }}/{{ ano }}</title>
+  <title>Fluxo Financeiro</title>
 
   <style>
-    /* ===== Página / impressão ===== */
     @page {
       size: A4;
       margin: 16mm 14mm;
@@ -37,7 +36,6 @@
       color: var(--text);
     }
 
-    /* ===== Cabeçalho ===== */
     .header {
       border-bottom: 2px solid var(--brand);
       padding-bottom: 8px;
@@ -57,7 +55,6 @@
     }
     .right { text-align: right; }
 
-    /* ===== Filtros (linha) ===== */
     .filters {
       margin-top: 6px;
       font-size: 11px;
@@ -65,7 +62,6 @@
     }
     .filters b { color: var(--text); }
 
-    /* ===== KPIs ===== */
     .kpis {
       background: var(--soft);
       border: 1px solid var(--line);
@@ -86,13 +82,12 @@
       font-weight: 900;
       white-space: nowrap;
     }
-    .v.vendas { color: var(--info); }
-    .v.pagamentos { color: var(--ok); }
-    .v.saldo-pos { color: var(--ok); }
-    .v.saldo-neg { color: var(--bad); }
-    .v.saldo-zero { color: #444; }
+    .v.vendas      { color: var(--info); }
+    .v.pagamentos  { color: var(--ok); }
+    .v.saldo-pos   { color: var(--ok); }
+    .v.saldo-neg   { color: var(--bad); }
+    .v.saldo-zero  { color: #444; }
 
-    /* ===== Tabela ===== */
     table.tbl {
       width: 100%;
       border-collapse: collapse;
@@ -110,27 +105,21 @@
       font-weight: 800;
     }
 
-    .num { text-align: right; white-space: nowrap; }
+    .num    { text-align: right; white-space: nowrap; }
     .center { text-align: center; white-space: nowrap; }
-    .muted { color: var(--muted); }
+    .muted  { color: var(--muted); }
 
-    /* Zebra */
     table.tbl tbody tr:nth-child(even) td { background: #fafafa; }
-
-    /* Repetir cabeçalho */
     thead { display: table-header-group; }
+    tr    { page-break-inside: avoid; }
 
-    /* Evitar quebra feia em linhas */
-    tr { page-break-inside: avoid; }
+    .txt-venda   { color: var(--info); font-weight: 800; }
+    .txt-credito { color: var(--ok);  font-weight: 800; }
+    .saldo-neg   { color: var(--bad); font-weight: 900; }
+    .saldo-pos   { color: var(--ok);  font-weight: 900; }
+    .saldo-zero  { color: #444;       font-weight: 900; }
 
-    /* Destaques */
-    .txt-venda { color: var(--info); font-weight: 800; }
-    .txt-credito { color: var(--ok); font-weight: 800; }
-    .saldo-neg { color: var(--bad); font-weight: 900; }
-    .saldo-pos { color: var(--ok); font-weight: 900; }
-    .saldo-zero { color: #444; font-weight: 900; }
-
-    .footer-note{
+    .footer-note {
       margin-top: 10px;
       font-size: 10px;
       color: var(--muted);
@@ -143,12 +132,25 @@
     <table>
       <tr>
         <td>
-          <p class="title">Fluxo Financeiro — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
+          {# Título dinâmico: suporta mes/ano None (= "Todos") #}
+          <p class="title">
+            Fluxo Financeiro —
+            {% if mes and ano %}
+              {{ mes|stringformat:"02d" }}/{{ ano }}
+            {% elif mes %}
+              Mês {{ mes|stringformat:"02d" }} / Todos os anos
+            {% elif ano %}
+              Todos os meses / {{ ano }}
+            {% else %}
+              Todos os períodos
+            {% endif %}
+          </p>
           <div class="sub">Gerado em: {{ now|date:"d/m/Y H:i" }}</div>
 
           <div class="filters">
             {% if numero_romaneio %}
-              Nº Romaneio: <b>#{{ numero_romaneio }}</b> &nbsp;|&nbsp;
+              Nº Romaneio: <b>#{{ numero_romaneio }}</b>
+              {% if madeira_nome %}&nbsp;|&nbsp;{% endif %}
             {% endif %}
             {% if madeira_nome %}
               Madeira: <b>{{ madeira_nome }}</b>

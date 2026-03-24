@@ -6,14 +6,19 @@
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
             <span><i class="fas fa-tree"></i> Tipos de Madeira</span>
-            <a href="{% url 'cadastros:tipo_madeira_create' %}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Novo Tipo
-            </a>
+            <div class="d-flex gap-2">
+                <button onclick="imprimirTiposMadeira()" class="btn btn-outline-secondary btn-sm" title="Imprimir lista de tipos de madeira">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+                <a href="{% url 'cadastros:tipo_madeira_create' %}" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus"></i> Novo Tipo
+                </a>
+            </div>
         </div>
     </div>
     <div class="card-body">
         <!-- Tabela de tipos -->
-        <div class="table-responsive">
+        <div class="table-responsive" id="tabela-tipos-madeira">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
@@ -21,7 +26,7 @@
                         <th class="text-end">Preço Normal</th>
                         <th class="text-end">Preço com Frete</th>
                         <th>Status</th>
-                        <th class="text-end"></th>
+                        <th class="text-end d-print-none"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,7 +42,7 @@
                                 <span class="badge bg-secondary">Inativo</span>
                             {% endif %}
                         </td>
-                        <td class="text-end">
+                        <td class="text-end d-print-none">
                             <a href="{% url 'cadastros:tipo_madeira_update' madeira.id %}" class="btn btn-sm btn-primary" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -99,4 +104,79 @@
         {% endif %}
     </div>
 </div>
+
+{# ===== Janela de impressão ===== #}
+<script>
+function imprimirTiposMadeira() {
+    var tabela = document.getElementById('tabela-tipos-madeira');
+    var linhas = tabela.querySelectorAll('tbody tr');
+    var html = '';
+
+    linhas.forEach(function(tr) {
+        // Pega as primeiras 4 colunas (ignora botões de ação)
+        var cols = tr.querySelectorAll('td');
+        if (cols.length === 0) return;
+
+        var nome        = cols[0] ? cols[0].innerText.trim() : '';
+        var precoNormal = cols[1] ? cols[1].innerText.trim() : '';
+        var precoFrete  = cols[2] ? cols[2].innerText.trim() : '';
+        var status      = cols[3] ? cols[3].innerText.trim() : '';
+
+        if (!nome) return; // pula linha vazia
+
+        html += '<tr>' +
+            '<td>' + nome + '</td>' +
+            '<td style="text-align:right">' + precoNormal + '</td>' +
+            '<td style="text-align:right">' + precoFrete + '</td>' +
+            '<td style="text-align:center">' + status + '</td>' +
+        '</tr>';
+    });
+
+    var agora = new Date();
+    var dataFormatada = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+
+    var win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(`<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <title>Tipos de Madeira</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
+    h2 { font-size: 16px; font-weight: 800; margin: 0 0 4px 0; color: #246b29; }
+    .sub { font-size: 11px; color: #666; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #eef3ef; text-align: left; font-weight: 800; font-size: 11px;
+         border: 1px solid #cfd4dc; padding: 7px 8px; }
+    td { border: 1px solid #cfd4dc; padding: 6px 8px; font-size: 11px; vertical-align: middle; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .footer { margin-top: 10px; font-size: 10px; color: #888; }
+  </style>
+</head>
+<body>
+  <h2>Tipos de Madeira</h2>
+  <div class="sub">Gerado em: ${dataFormatada}</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th class="right">Preço Normal</th>
+        <th class="right">Preço com Frete</th>
+        <th class="center">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${html || '<tr><td colspan="4" style="text-align:center;color:#888;">Nenhum tipo de madeira cadastrado.</td></tr>'}
+    </tbody>
+  </table>
+  <div class="footer">Documento gerado automaticamente pelo sistema MadereiraJD.</div>
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body>
+</html>`);
+    win.document.close();
+}
+</script>
 {% endblock %}

@@ -11,7 +11,7 @@
 
       {# Export do período (preserva filtros) #}
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente_id numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
+        {% with mes_q=request.GET.mes ano_q=request.GET.ano cliente_q=request.GET.cliente_id numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
           <a class="btn btn-outline-success btn-sm"
              href="{% url 'relatorios:fluxo_financeiro_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente_id={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}"
              title="Exportar fluxo financeiro do período em Excel (.xlsx)">
@@ -31,12 +31,14 @@
     <div class="card-body">
       {# ===== Filtros ===== #}
       <form method="get" class="row g-2 align-items-end mb-3">
+
         <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Mês</label>
           <select name="mes" class="form-select">
+            <option value="" {% if request.GET.mes == "" %}selected{% endif %}>Todos</option>
             {% for m in meses %}
               <option value="{{ m|stringformat:'d' }}"
-                      {% if m|stringformat:'d' == request.GET.mes|default:mes|stringformat:'s' %}selected{% endif %}>
+                      {% if mes and m == mes %}selected{% endif %}>
                 {{ m|stringformat:"02d" }}
               </option>
             {% endfor %}
@@ -46,9 +48,10 @@
         <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Ano</label>
           <select name="ano" class="form-select">
+            <option value="" {% if request.GET.ano == "" %}selected{% endif %}>Todos</option>
             {% for a in anos %}
               <option value="{{ a|stringformat:'d' }}"
-                      {% if a|stringformat:'d' == request.GET.ano|default:ano|stringformat:'s' %}selected{% endif %}>
+                      {% if ano and a == ano %}selected{% endif %}>
                 {{ a|stringformat:'d' }}
               </option>
             {% endfor %}
@@ -105,13 +108,16 @@
         </div>
 
         <div class="col-12 col-lg text-lg-end text-muted small">
-          Período: <b>{{ request.GET.mes|default:mes|stringformat:"02d" }}/{{ request.GET.ano|default:ano }}</b>
+          Período:
+          <b>
+            {% if mes %}{{ mes|stringformat:"02d" }}{% else %}Todos os meses{% endif %}
+            /
+            {% if ano %}{{ ano }}{% else %}Todos os anos{% endif %}
+          </b>
 
           {% if request.GET.cliente_id %}
             &nbsp;|&nbsp; Cliente: <b>
-              {% for c in clientes %}
-                {% if c.id|stringformat:"s" == request.GET.cliente_id %}{{ c.nome }}{% endif %}
-              {% endfor %}
+              {% for c in clientes %}{% if c.id|stringformat:"s" == request.GET.cliente_id %}{{ c.nome }}{% endif %}{% endfor %}
             </b>
           {% endif %}
 
@@ -121,9 +127,7 @@
 
           {% if request.GET.tipo_madeira_id %}
             &nbsp;|&nbsp; Madeira: <b>
-              {% for tm in tipos_madeira %}
-                {% if tm.id|stringformat:"s" == request.GET.tipo_madeira_id %}{{ tm.nome }}{% endif %}
-              {% endfor %}
+              {% for tm in tipos_madeira %}{% if tm.id|stringformat:"s" == request.GET.tipo_madeira_id %}{{ tm.nome }}{% endif %}{% endfor %}
             </b>
           {% endif %}
         </div>
@@ -135,7 +139,7 @@
           <div class="p-3 border rounded bg-light h-100">
             <div class="d-flex justify-content-between align-items-start">
               <div>
-                <div class="text-muted small">Vendas (mês)</div>
+                <div class="text-muted small">Vendas (período)</div>
                 <div class="fw-bold fs-4 text-primary">R$ {{ vendas|floatformat:2 }}</div>
               </div>
               <div class="fs-4 text-primary"><i class="fas fa-file-invoice-dollar"></i></div>
@@ -166,11 +170,11 @@
             </div>
             <div class="text-muted small mt-1">
               {% if saldo_mes > 0 %}
-                Você recebeu mais do que vendeu no mês.
+                Você recebeu mais do que vendeu no período.
               {% elif saldo_mes < 0 %}
-                Você vendeu mais do que recebeu no mês.
+                Você vendeu mais do que recebeu no período.
               {% else %}
-                O mês fechou zerado.
+                O período fechou zerado.
               {% endif %}
             </div>
           </div>
@@ -198,37 +202,25 @@
                 <td>{{ m.data|date:"d/m/Y" }}</td>
 
                 <td class="text-center">
-                  {% if m.numero_romaneio %}
-                    {{ m.numero_romaneio }}
-                  {% else %}
-                    —
-                  {% endif %}
+                  {% if m.numero_romaneio %}{{ m.numero_romaneio }}{% else %}—{% endif %}
                 </td>
 
                 <td>{{ m.cliente_nome }}</td>
 
                 <td class="text-end">
-                  {% if m.m3 is not None %}
-                    {{ m.m3|floatformat:3 }}
-                  {% else %}
-                    —
-                  {% endif %}
+                  {% if m.m3 is not None %}{{ m.m3|floatformat:3 }}{% else %}—{% endif %}
                 </td>
 
                 <td class="text-end">
                   {% if m.total is not None %}
                     <span class="fw-bold text-primary">R$ {{ m.total|floatformat:2 }}</span>
-                  {% else %}
-                    —
-                  {% endif %}
+                  {% else %}—{% endif %}
                 </td>
 
                 <td class="text-end">
                   {% if m.credito is not None %}
                     <span class="fw-bold text-success">R$ {{ m.credito|floatformat:2 }}</span>
-                  {% else %}
-                    —
-                  {% endif %}
+                  {% else %}—{% endif %}
                 </td>
 
                 <td class="text-end">
