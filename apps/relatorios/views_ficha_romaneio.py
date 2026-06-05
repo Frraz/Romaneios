@@ -6,7 +6,7 @@ import re
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import IntegerField, Sum
-from django.db.models.functions import Cast
+from django.db.models.expressions import RawSQL
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -75,9 +75,17 @@ def _romaneios_queryset(request):
     if tipo_madeira_id:
         qs = qs.distinct()
 
-    # Ordenação numérica do Nº Romaneio (quando o campo é CharField)
-    # No Postgres, Cast falha se existir valor não-numérico.
-    qs = qs.annotate(numero_int=Cast("numero_romaneio", output_field=IntegerField()))
+    # Ordenação numérica segura do Nº Romaneio (CharField no banco).
+    # Cast direto para IntegerField quebra quando o valor contém ponto ou letras (ex: "3107.1").
+    # Solução: usa CASE/WHEN com regex no Postgres — converte para integer só se for dígitos puros,
+    # caso contrário retorna NULL (vai para o final na ordenação ASC).
+    qs = qs.annotate(
+        numero_int=RawSQL(
+            "CASE WHEN numero_romaneio ~ '^[0-9]+$' THEN numero_romaneio::integer ELSE NULL END",
+            [],
+            output_field=IntegerField(),
+        )
+    )
 
     sort_map = {
         "cliente": "cliente__nome",
@@ -90,7 +98,7 @@ def _romaneios_queryset(request):
     if desc:
         field = f"-{field}"
 
-    # tie-breakers estáveis (não “brigam” com o primeiro critério)
+    # tie-breakers estáveis (não "brigam" com o primeiro critério)
     return qs.order_by(field, "data_romaneio", "numero_int", "id")
 
 
@@ -394,7 +402,6 @@ def ficha_romaneios_export_pdf(request):
 @login_required
 def romaneio_export_excel(request, romaneio_id: int):
     """Exporta UM romaneio para Excel (.xlsx) com layout profissional."""
-    # (mantive seu código original daqui pra baixo)
     from io import BytesIO
 
     from openpyxl import Workbook
