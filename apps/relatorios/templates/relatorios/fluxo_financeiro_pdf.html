@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load l10n %}<!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
@@ -136,11 +136,11 @@
           <p class="title">
             Fluxo Financeiro —
             {% if mes and ano %}
-              {{ mes|stringformat:"02d" }}/{{ ano }}
+              {{ mes|stringformat:"02d" }}/{{ ano|unlocalize }}
             {% elif mes %}
               Mês {{ mes|stringformat:"02d" }} / Todos os anos
             {% elif ano %}
-              Todos os meses / {{ ano }}
+              Todos os meses / {{ ano|unlocalize }}
             {% else %}
               Todos os períodos
             {% endif %}

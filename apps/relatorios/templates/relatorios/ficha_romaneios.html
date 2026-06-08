@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 {% block title %}Ficha de Romaneios{% endblock %}
 
 {% block content %}
@@ -11,7 +12,7 @@
 
       <!-- Export do período (preserva filtros) -->
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
           <a class="btn btn-outline-success btn-sm"
              href="{% url 'relatorios:ficha_romaneios_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
              title="Exportar romaneios do período em Excel (.xlsx)">
@@ -128,7 +129,7 @@
               <tr>
                 <th>
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=cliente&dir={% if sort == 'cliente' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=cliente&dir={% if sort == 'cliente' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Cliente
                     {% if sort == "cliente" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -136,7 +137,7 @@
 
                 <th style="width: 140px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=numero&dir={% if sort == 'numero' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=numero&dir={% if sort == 'numero' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Nº Romaneio
                     {% if sort == "numero" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -144,7 +145,7 @@
 
                 <th style="width: 140px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=data&dir={% if sort == 'data' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=data&dir={% if sort == 'data' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Data
                     {% if sort == "data" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -154,7 +155,7 @@
 
                 <th class="text-end" style="width: 120px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=m3&dir={% if sort == 'm3' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=m3&dir={% if sort == 'm3' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     M³
                     {% if sort == "m3" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -162,7 +163,7 @@
 
                 <th class="text-end" style="width: 150px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=total&dir={% if sort == 'total' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=total&dir={% if sort == 'total' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Total R$
                     {% if sort == "total" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>

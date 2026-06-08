@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 {% block title %}Fluxo Financeiro{% endblock %}
 
 {% block content %}
@@ -11,7 +12,7 @@
 
       {# Export do período (preserva filtros) #}
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente_id numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente_id numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
           <a class="btn btn-outline-success btn-sm"
              href="{% url 'relatorios:fluxo_financeiro_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente_id={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}"
              title="Exportar fluxo financeiro do período em Excel (.xlsx)">
@@ -112,7 +113,7 @@
           <b>
             {% if mes %}{{ mes|stringformat:"02d" }}{% else %}Todos os meses{% endif %}
             /
-            {% if ano %}{{ ano }}{% else %}Todos os anos{% endif %}
+            {% if ano %}{{ ano|unlocalize }}{% else %}Todos os anos{% endif %}
           </b>
 
           {% if request.GET.cliente_id %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 {% block title %}Ficha de Madeiras{% endblock %}
 
 {% block content %}
@@ -11,7 +12,7 @@
 
       <!-- Export do período (preserva filtros) -->
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente|default:cliente_id sort_q=request.GET.sort dir_q=request.GET.dir numero_q=request.GET.numero_romaneio tipo_q=request.GET.tipo_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente|default:cliente_id sort_q=request.GET.sort dir_q=request.GET.dir numero_q=request.GET.numero_romaneio tipo_q=request.GET.tipo_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
           <a class="btn btn-outline-success btn-sm"
              href="{% url 'relatorios:ficha_madeiras_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if tipo_q %}&tipo_romaneio={{ tipo_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
              title="Exportar a ficha em Excel (.xlsx)">
@@ -143,7 +144,7 @@
         </div>
       </div>
 
-      {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano cliente_q=request.GET.cliente|default:cliente_id numero_q=request.GET.numero_romaneio tipo_q=request.GET.tipo_romaneio madeira_id_q=request.GET.tipo_madeira_id sort=request.GET.sort|default:"data" dir=request.GET.dir|default:"asc" %}
+      {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente|default:cliente_id numero_q=request.GET.numero_romaneio tipo_q=request.GET.tipo_romaneio madeira_id_q=request.GET.tipo_madeira_id sort=request.GET.sort|default:"data" dir=request.GET.dir|default:"asc" %}
         <div class="table-responsive">
           <table class="table table-striped table-hover align-middle mb-0">
             <thead class="table-light">

@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+{% load l10n %}<!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Ficha de Romaneios {{ mes }}/{{ ano }}</title>
+  <title>Ficha de Romaneios {{ mes }}/{{ ano|unlocalize }}</title>
   <style>
     @page {
       size: A4;
@@ -29,7 +29,7 @@
 </head>
 <body>
   <div class="header">
-    <p class="title">Ficha de Romaneios — {{ mes|stringformat:"02d" }}/{{ ano }}</p>
+    <p class="title">Ficha de Romaneios — {{ mes|stringformat:"02d" }}/{{ ano|unlocalize }}</p>
     <div class="sub">
       Cliente: <b>{{ cliente_nome }}</b> &nbsp;|&nbsp;
       Gerado em: {{ now|date:"d/m/Y H:i" }}

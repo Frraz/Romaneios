@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block content %}
   <h1>Dashboard (Core)</h1>
 
-  <p><strong>Mês/Ano:</strong> {{ mes }}/{{ ano }}</p>
+  <p><strong>Mês/Ano:</strong> {{ mes }}/{{ ano|unlocalize }}</p>
 
   <ul>
     <li><strong>Total m³ no mês:</strong> {{ total_m3_mes }}</li>
