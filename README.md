@@ -3,6 +3,7 @@
 Sistema web em **Django** para gestão de vendas (romaneios) de madeira, controle de clientes, saldos, recebimentos e relatórios.  
 O objetivo é substituir planilhas por uma solução **centralizada, rastreável e segura**.
 
+
 ---
 
 ## Visão geral
