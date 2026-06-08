@@ -141,7 +141,9 @@ def _fluxo_querysets(request):
 
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
-    cliente_id      = (request.GET.get("cliente_id") or "").strip()
+    # Aceita tanto "cliente_id" (usado aqui) quanto "cliente" (usado nas fichas),
+    # para que o filtro funcione independente de qual nome o link/bookmark usou.
+    cliente_id      = (request.GET.get("cliente_id") or request.GET.get("cliente") or "").strip()
 
     vendas_qs = (
         Romaneio.objects
@@ -259,7 +261,7 @@ class RelatorioFluxoView(LoginRequiredMixin, TemplateView):
                 "meses": range(1, 13),
                 "anos": anos,
                 "clientes": Cliente.objects.filter(ativo=True).order_by("nome"),
-                "cliente_id": (self.request.GET.get("cliente_id") or "").strip(),
+                "cliente_id": (self.request.GET.get("cliente_id") or self.request.GET.get("cliente") or "").strip(),
                 "tipos_madeira": TipoMadeira.objects.order_by("nome"),
                 # KPIs
                 "vendas": vendas_total,

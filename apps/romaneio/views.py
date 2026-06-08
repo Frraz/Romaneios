@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,6 +8,7 @@ from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.cadastros.models import Cliente, TipoMadeira
@@ -53,14 +52,26 @@ class RomaneioListView(LoginRequiredMixin, ListView):
         numero = self.request.GET.get("numero")
         modalidade = self.request.GET.get("modalidade")
 
-        # Apenas filtra se ambos enviados!
-        if mes and ano:
-            try:
-                qs = qs.filter(data_romaneio__month=int(mes), data_romaneio__year=int(ano))
-            except (ValueError, TypeError):
-                pass
+        # Mês e ano filtram de forma independente: selecionar só o mês OU só o ano
+        # já aplica o filtro (antes exigia os dois juntos, então "Todos" em um deles
+        # anulava o filtro inteiro).
+        try:
+            mes_int = int(mes) if mes else None
+        except (ValueError, TypeError):
+            mes_int = None
+        try:
+            ano_int = int(ano) if ano else None
+        except (ValueError, TypeError):
+            ano_int = None
+
+        if mes_int and ano_int:
+            qs = qs.filter(data_romaneio__month=mes_int, data_romaneio__year=ano_int)
+        elif ano_int:
+            qs = qs.filter(data_romaneio__year=ano_int)
+        elif mes_int:
+            qs = qs.filter(data_romaneio__month=mes_int)
         elif not self.request.GET:
-            now = datetime.now()
+            now = timezone.localdate()
             qs = qs.filter(data_romaneio__month=now.month, data_romaneio__year=now.year)
 
         if cliente_id:
@@ -82,7 +93,7 @@ class RomaneioListView(LoginRequiredMixin, ListView):
         context["total_valor_periodo"] = totais["total_valor"] or 0
 
         anos = [d.year for d in Romaneio.objects.dates("data_romaneio", "year", order="ASC")]
-        context["anos"] = anos or [datetime.now().year]
+        context["anos"] = anos or [timezone.localdate().year]
         context["meses"] = range(1, 13)
         context["modalidades"] = Romaneio.MODALIDADE_CHOICES
         return context

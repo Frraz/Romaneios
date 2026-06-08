@@ -230,6 +230,18 @@ class MotoristaListView(LoginRequiredMixin, ListView):
     context_object_name = "motoristas"
     paginate_by = 20
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        busca = self.request.GET.get("q")
+        if busca:
+            qs = qs.filter(
+                Q(nome__icontains=busca)
+                | Q(cpf__icontains=busca)
+                | Q(telefone__icontains=busca)
+                | Q(placa_veiculo__icontains=busca)
+            )
+        return qs
+
 
 class MotoristaCreateView(LoginRequiredMixin, CreateView):
     model = Motorista

@@ -54,6 +54,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         context["mes"] = mes
         context["ano"] = ano
+        context["meses"] = range(1, 13)
+        anos = [d.year for d in Romaneio.objects.dates("data_romaneio", "year", order="ASC")]
+        context["anos"] = anos or [ano]
         context["total_m3_mes"] = totais_mes["total_m3"] or 0
         context["total_faturado_mes"] = totais_mes["total_valor"] or 0
         context["qtd_romaneios_mes"] = totais_mes["qtd_romaneios"] or 0

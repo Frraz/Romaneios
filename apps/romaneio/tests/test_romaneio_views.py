@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.romaneio.forms import ItemRomaneioFormSet
 from apps.romaneio.models import Romaneio
-from apps.tests.factories import create_cliente, create_tipo_madeira, create_user
+from apps.romaneio.views import RomaneioListView
+from apps.tests.factories import create_cliente, create_romaneio, create_tipo_madeira, create_user
 
 
 class GetPrecoMadeiraEndpointTests(TestCase):
@@ -54,6 +56,60 @@ class GetPrecoMadeiraEndpointTests(TestCase):
         data = resp.json()
         self.assertEqual(data["success"], False)
         self.assertIn("Tipo de madeira não encontrado", data["error"])
+
+
+class RomaneioListFilterTests(TestCase):
+    """
+    Testa os filtros de mês/ano da lista de Romaneios via get_queryset
+    (RequestFactory evita renderizar template). Regressão do bug em que
+    selecionar só o mês OU só o ano não filtrava (exigia os dois juntos).
+    """
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.cliente = create_cliente(nome="Cliente Filtro Lista")
+        self.r_jan_2024 = create_romaneio(
+            numero_romaneio="9001", cliente=self.cliente, data_romaneio=date(2024, 1, 15)
+        )
+        self.r_mar_2024 = create_romaneio(
+            numero_romaneio="9002", cliente=self.cliente, data_romaneio=date(2024, 3, 10)
+        )
+        self.r_jan_2025 = create_romaneio(
+            numero_romaneio="9003", cliente=self.cliente, data_romaneio=date(2025, 1, 20)
+        )
+
+    def _filtrar(self, **params) -> list[Romaneio]:
+        request = self.factory.get("/romaneio/", params)
+        view = RomaneioListView()
+        view.request = request
+        view.kwargs = {}
+        view.args = ()
+        return list(view.get_queryset())
+
+    def test_filtra_so_por_mes(self):
+        nums = {r.numero_romaneio for r in self._filtrar(mes="1")}
+        self.assertEqual(nums, {"9001", "9003"})  # jan/2024 e jan/2025
+
+    def test_filtra_so_por_ano(self):
+        nums = {r.numero_romaneio for r in self._filtrar(ano="2024")}
+        self.assertEqual(nums, {"9001", "9002"})
+
+    def test_filtra_por_mes_e_ano(self):
+        nums = {r.numero_romaneio for r in self._filtrar(mes="1", ano="2024")}
+        self.assertEqual(nums, {"9001"})
+
+    def test_mes_e_ano_vazios_nao_filtram_data(self):
+        # "Todos" em ambos (strings vazias) + outro filtro presente => sem restrição de data
+        nums = {r.numero_romaneio for r in self._filtrar(mes="", ano="", cliente=str(self.cliente.id))}
+        self.assertEqual(nums, {"9001", "9002", "9003"})
+
+    def test_sem_parametros_usa_mes_atual(self):
+        hoje = timezone.localdate()
+        create_romaneio(
+            numero_romaneio="9100", cliente=self.cliente, data_romaneio=hoje
+        )
+        nums = {r.numero_romaneio for r in self._filtrar()}
+        self.assertIn("9100", nums)
 
 
 class RomaneioCreateUpdateViewTests(TestCase):

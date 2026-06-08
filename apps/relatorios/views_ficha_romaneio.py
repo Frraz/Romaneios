@@ -48,7 +48,7 @@ def _romaneios_queryset(request):
       - Ao filtrar por itens, é necessário distinct() para não duplicar romaneios.
     """
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
@@ -149,7 +149,7 @@ def ficha_romaneios_export(request):
     Respeita filtros: mes/ano, cliente, numero_romaneio, tipo_madeira_id.
     """
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
@@ -224,7 +224,7 @@ def ficha_romaneios_export_excel(request):
     from openpyxl.utils import get_column_letter
 
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
     qs = _romaneios_queryset(request)
@@ -350,7 +350,7 @@ def ficha_romaneios_export_excel(request):
 def ficha_romaneios_export_pdf(request):
     """Exporta a Ficha de Romaneios (por ROMANEIO) para PDF via WeasyPrint, respeitando filtros e ordenação."""
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
     qs = _romaneios_queryset(request)

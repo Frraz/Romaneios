@@ -31,7 +31,7 @@ def _madeiras_queryset(request):
     """
     mes, ano = get_mes_ano(request)
 
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_romaneio = (request.GET.get("tipo_romaneio") or "").strip().upper()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
@@ -94,7 +94,7 @@ class RelatorioMadeirasView(LoginRequiredMixin, TemplateView):
         mes, ano = get_mes_ano(self.request)
         qs = _madeiras_queryset(self.request)
 
-        cliente_id = (self.request.GET.get("cliente") or "").strip()
+        cliente_id = (self.request.GET.get("cliente") or self.request.GET.get("cliente_id") or "").strip()
 
         totais = qs.aggregate(
             total_m3=Sum("quantidade_m3_total"),
@@ -130,7 +130,7 @@ def ficha_madeiras_export_excel(request):
     mes, ano = get_mes_ano(request)
     qs = _madeiras_queryset(request)
 
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     cliente_nome = "Todos"
     if cliente_id:
         c = Cliente.objects.filter(pk=cliente_id).first()
@@ -252,7 +252,7 @@ def ficha_madeiras_export_pdf(request):
     mes, ano = get_mes_ano(request)
     qs = _madeiras_queryset(request)
 
-    cliente_id = (request.GET.get("cliente") or "").strip()
+    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
     cliente_nome = "Todos"
     if cliente_id:
         c = Cliente.objects.filter(pk=cliente_id).first()

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.relatorios.views_fluxo_financeiro import _fluxo_querysets
 from apps.tests.factories import (
     create_cliente,
     create_item_romaneio,
@@ -14,6 +15,29 @@ from apps.tests.factories import (
     create_tipo_madeira,
     create_user,
 )
+
+
+class FluxoClienteParamToleranceTests(TestCase):
+    """O fluxo financeiro deve filtrar por cliente tanto com `cliente_id` quanto com `cliente`."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        today = timezone.localdate()
+        self.c1 = create_cliente(nome="Fluxo C1")
+        self.c2 = create_cliente(nome="Fluxo C2")
+        create_romaneio(numero_romaneio="fx-1", cliente=self.c1, data_romaneio=today)
+        create_romaneio(numero_romaneio="fx-2", cliente=self.c2, data_romaneio=today)
+
+    def _vendas_nums(self, **params):
+        request = self.factory.get("/relatorios/fluxo-financeiro/", params)
+        vendas_qs, _ = _fluxo_querysets(request)
+        return {r.numero_romaneio for r in vendas_qs}
+
+    def test_filtra_com_cliente_id(self):
+        self.assertEqual(self._vendas_nums(cliente_id=str(self.c1.id)), {"fx-1"})
+
+    def test_filtra_com_cliente(self):
+        self.assertEqual(self._vendas_nums(cliente=str(self.c1.id)), {"fx-1"})
 
 
 class RelatoriosDashboardViewTests(TestCase):

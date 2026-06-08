@@ -2,18 +2,55 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.cadastros.views import MotoristaListView, TipoMadeiraListView
 from apps.tests.factories import (
     create_cliente,
     create_item_romaneio,
+    create_motorista,
     create_pagamento,
     create_romaneio,
     create_tipo_madeira,
     create_user,
 )
+
+
+class MotoristaTipoMadeiraSearchTests(TestCase):
+    """Busca por `q` nas listas de Motoristas e Tipos de Madeira (via get_queryset)."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        create_motorista(nome="João da Silva", cpf="111", telefone="9999", placa_veiculo="ABC1234")
+        create_motorista(nome="Maria Souza", cpf="222", telefone="8888", placa_veiculo="XYZ9876")
+
+        create_tipo_madeira(nome="ANGICO", preco_normal=Decimal("10.00"), preco_com_frete=Decimal("20.00"))
+        create_tipo_madeira(nome="IPÊ", preco_normal=Decimal("30.00"), preco_com_frete=Decimal("40.00"))
+
+    def _run(self, view_cls, **params):
+        request = self.factory.get("/", params)
+        view = view_cls()
+        view.request = request
+        view.kwargs = {}
+        view.args = ()
+        return list(view.get_queryset())
+
+    def test_motorista_busca_por_nome(self):
+        nomes = {m.nome for m in self._run(MotoristaListView, q="maria")}
+        self.assertEqual(nomes, {"Maria Souza"})
+
+    def test_motorista_busca_por_placa(self):
+        nomes = {m.nome for m in self._run(MotoristaListView, q="ABC1234")}
+        self.assertEqual(nomes, {"João da Silva"})
+
+    def test_motorista_sem_busca_retorna_todos(self):
+        self.assertEqual(len(self._run(MotoristaListView)), 2)
+
+    def test_tipo_madeira_busca_por_nome(self):
+        nomes = {t.nome for t in self._run(TipoMadeiraListView, q="ang")}
+        self.assertEqual(nomes, {"ANGICO"})
 
 
 class ClienteListViewSaldoTests(TestCase):
