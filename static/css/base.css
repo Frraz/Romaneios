@@ -152,12 +152,11 @@ a:hover {
 .navbar {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
     box-shadow: var(--shadow-md);
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     transition: var(--transition-normal);
     position: sticky;
     top: 0;
     z-index: var(--z-fixed);
-    backdrop-filter: blur(10px);
 }
 
 .navbar-brand {
@@ -219,7 +218,6 @@ a:hover {
     padding: 0.5rem;
     animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-top: 0.5rem;
-    backdrop-filter: blur(10px);
 }
 
 @keyframes slideDown {
@@ -338,14 +336,23 @@ a:hover {
     }
 }
 
+/* Chevron dos submenus (mobile) gira quando o grupo está expandido */
+.offcanvas .nav-link .fa-chevron-down {
+    transition: transform 0.25s ease;
+}
+
+.offcanvas .nav-link[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
 /* ===== CONTENT WRAPPER ===== */
 .content-wrapper {
     flex: 1;
     padding: var(--spacing-xl) 0;
-    animation: fadeIn 0.5s ease-out;
+    animation: contentFadeIn 0.5s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes contentFadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
@@ -491,13 +498,15 @@ a:hover {
 
 /* ===== BADGES ===== */
 .badge {
-    padding: 0.5rem 1rem;
+    padding: 0.4em 0.75em;
     font-weight: 600;
     border-radius: 50px;
-    font-size: 0.875rem;
+    font-size: 0.8em;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    line-height: 1.2;
+    vertical-align: middle;
 }
 
 .badge.bg-primary { background-color: var(--primary-color) !important; }
@@ -520,6 +529,16 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+/* O botão de fechar (.btn-close) é posicionado em absoluto pelo Bootstrap; sem este
+   espaço à direita ele fica por cima do texto do alerta. */
+.alert-dismissible {
+    padding-right: 3.25rem;
+}
+
+.alert-dismissible .btn-close {
+    padding: 1.1rem 1.25rem;
 }
 
 @keyframes slideInDown {
@@ -605,10 +624,38 @@ a:hover {
 .form-select {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
-    padding: 0.625rem 1rem;
     transition: var(--transition-fast);
     font-size: 1rem;
     background-color: var(--card-bg);
+}
+
+.form-control {
+    padding: 0.625rem 1rem;
+}
+
+/* O .form-select precisa manter espaço à direita para a seta (caret) do Bootstrap,
+   senão o texto das opções fica por baixo do ícone. */
+.form-select {
+    padding: 0.625rem 2.25rem 0.625rem 1rem;
+}
+
+/* Variantes pequenas: a ordem de carregamento (base.css depois do Bootstrap) fazia
+   o .form-*-sm perder o tamanho reduzido. Restauramos explicitamente. */
+.form-control-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius-sm);
+}
+
+.form-select-sm {
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius-sm);
+}
+
+.form-control-lg,
+.form-select-lg {
+    font-size: 1.125rem;
 }
 
 .form-control:focus,
@@ -686,10 +733,12 @@ a:hover {
 }
 
 .stat-card .stat-value {
-    font-size: 2rem;
+    font-size: clamp(1.4rem, 4vw, 2rem);
     font-weight: 700;
     margin: var(--spacing-sm) 0;
     color: var(--dark-text);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .stat-card .stat-label {
@@ -938,12 +987,26 @@ button:focus-visible,
     .btn,
     .alert,
     .dropdown-menu,
-    .badge {
+    .no-print {
         display: none !important;
     }
 
     body {
         background: white;
+    }
+
+    /* Garante que cores/fundos (badges, cabeçalhos) saiam na impressão. */
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Badges continuam visíveis, mas legíveis no papel (sem fundo colorido pesado). */
+    .badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background: transparent !important;
+        padding: 0.15rem 0.5rem;
     }
 
     .card {
@@ -952,12 +1015,13 @@ button:focus-visible,
         page-break-inside: avoid;
     }
 
-    .table {
-        page-break-inside: avoid;
+    .card-header {
+        background: #eee !important;
+        color: #000 !important;
     }
 
-    a[href]::after {
-        content: " (" attr(href) ")";
+    .table {
+        page-break-inside: avoid;
     }
 }
 
