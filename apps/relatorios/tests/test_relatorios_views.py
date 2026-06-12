@@ -11,6 +11,7 @@ from apps.tests.factories import (
     create_cliente,
     create_item_romaneio,
     create_pagamento,
+    create_romaneiador,
     create_romaneio,
     create_tipo_madeira,
     create_user,
@@ -184,6 +185,24 @@ class RelatorioFichaRomaneiosTests(TestCase):
 
         # e sem duplicar r3 apesar de ter 2 itens
         self.assertEqual(len(numeros), len(set(numeros)))
+
+    def test_ficha_romaneios_filter_by_romaneiador(self):
+        rom_x = create_romaneiador(nome="ROMANEIADOR X")
+        rom_y = create_romaneiador(nome="ROMANEIADOR Y")
+
+        self.r2.romaneiador = rom_x
+        self.r2.save(update_fields=["romaneiador"])
+        self.r10.romaneiador = rom_y
+        self.r10.save(update_fields=["romaneiador"])
+        # r3 fica sem romaneiador
+
+        resp = self.client.get(
+            reverse("relatorios:ficha_romaneios"),
+            {"mes": self.mes, "ano": self.ano, "romaneiador": rom_x.id},
+        )
+        self.assertEqual(resp.status_code, 200)
+        numeros = [r.numero_romaneio for r in resp.context["romaneios"]]
+        self.assertEqual(numeros, ["2"])
 
     def test_ficha_romaneios_sort_numero_is_numeric(self):
         resp = self.client.get(

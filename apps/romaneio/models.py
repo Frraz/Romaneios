@@ -7,7 +7,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Sum
 
-from apps.cadastros.models import Cliente, Motorista, TipoMadeira
+from apps.cadastros.models import Cliente, Motorista, Romaneiador, TipoMadeira
 
 QTD_M3_STEP = Decimal("0.001")
 VALOR_STEP = Decimal("0.01")
@@ -39,6 +39,13 @@ class Romaneio(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name="romaneios")
     motorista = models.ForeignKey(
         Motorista,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="romaneios",
+    )
+    romaneiador = models.ForeignKey(
+        Romaneiador,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -6,12 +6,14 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.cadastros.views import MotoristaListView, TipoMadeiraListView
+from apps.cadastros.models import Romaneiador
+from apps.cadastros.views import MotoristaListView, RomaneiadorListView, TipoMadeiraListView
 from apps.tests.factories import (
     create_cliente,
     create_item_romaneio,
     create_motorista,
     create_pagamento,
+    create_romaneiador,
     create_romaneio,
     create_tipo_madeira,
     create_user,
@@ -51,6 +53,45 @@ class MotoristaTipoMadeiraSearchTests(TestCase):
     def test_tipo_madeira_busca_por_nome(self):
         nomes = {t.nome for t in self._run(TipoMadeiraListView, q="ang")}
         self.assertEqual(nomes, {"ANGICO"})
+
+
+class RomaneiadorViewsTests(TestCase):
+    """Busca na lista e fluxo de criação de Romaneiador."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = create_user(username="rom_user", password="12345678")
+        self.client.login(username="rom_user", password="12345678")
+
+        create_romaneiador(nome="JOÃO ROMANEIADOR", telefone="9999")
+        create_romaneiador(nome="MARIA ROMANEIADORA", telefone="8888")
+
+    def _run(self, **params):
+        request = self.factory.get("/", params)
+        view = RomaneiadorListView()
+        view.request = request
+        view.kwargs = {}
+        view.args = ()
+        return list(view.get_queryset())
+
+    def test_busca_por_nome(self):
+        nomes = {r.nome for r in self._run(q="maria")}
+        self.assertEqual(nomes, {"MARIA ROMANEIADORA"})
+
+    def test_busca_por_telefone(self):
+        nomes = {r.nome for r in self._run(q="9999")}
+        self.assertEqual(nomes, {"JOÃO ROMANEIADOR"})
+
+    def test_sem_busca_retorna_todos(self):
+        self.assertEqual(len(self._run()), 2)
+
+    def test_create_normaliza_nome_para_maiusculo(self):
+        resp = self.client.post(
+            reverse("cadastros:romaneiador_create"),
+            {"nome": "carlos teste", "telefone": "", "ativo": "on"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Romaneiador.objects.filter(nome="CARLOS TESTE").exists())
 
 
 class ClienteListViewSaldoTests(TestCase):

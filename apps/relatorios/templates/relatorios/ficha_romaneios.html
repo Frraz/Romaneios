@@ -12,15 +12,15 @@
 
       <!-- Export do período (preserva filtros) -->
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
+        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente romaneiador_q=request.GET.romaneiador numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
           <a class="btn btn-outline-success btn-sm"
-             href="{% url 'relatorios:ficha_romaneios_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
+             href="{% url 'relatorios:ficha_romaneios_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if romaneiador_q %}&romaneiador={{ romaneiador_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
              title="Exportar romaneios do período em Excel (.xlsx)">
             <i class="fas fa-file-excel"></i> Excel
           </a>
 
           <a class="btn btn-outline-danger btn-sm"
-             href="{% url 'relatorios:ficha_romaneios_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
+             href="{% url 'relatorios:ficha_romaneios_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if romaneiador_q %}&romaneiador={{ romaneiador_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
              title="Exportar romaneios do período em PDF"
              target="_blank">
             <i class="fas fa-file-pdf"></i> PDF
@@ -59,12 +59,25 @@
 
         <div class="col-12 col-md-4 col-lg-3">
           <label class="form-label">Cliente</label>
-          <select name="cliente" class="form-select">
+          <select name="cliente" class="form-select select2">
             <option value="">Todos</option>
             {% for cliente in clientes %}
               <option value="{{ cliente.id }}"
                       {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
                 {{ cliente.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Romaneiador</label>
+          <select name="romaneiador" class="form-select select2">
+            <option value="">Todos</option>
+            {% for r in romaneiadores %}
+              <option value="{{ r.id }}"
+                      {% if r.id|stringformat:"s" == request.GET.romaneiador %}selected{% endif %}>
+                {{ r.nome }}
               </option>
             {% endfor %}
           </select>
@@ -81,7 +94,7 @@
 
         <div class="col-12 col-md-4 col-lg-3">
           <label class="form-label">Tipo de madeira</label>
-          <select name="tipo_madeira_id" class="form-select">
+          <select name="tipo_madeira_id" class="form-select select2">
             <option value="">Todas</option>
             {% for tm in tipos_madeira %}
               <option value="{{ tm.id }}"

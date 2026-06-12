@@ -99,6 +99,12 @@
                                     <i class="fas fa-truck"></i> Motoristas
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item {% if ns == 'cadastros' and urlname|slice:':11' == 'romaneiador' %}active{% endif %}"
+                                   href="{% url 'cadastros:romaneiador_list' %}">
+                                    <i class="fas fa-user-tag"></i> Romaneiadores
+                                </a>
+                            </li>
                             {% if user.is_staff %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
@@ -292,6 +298,10 @@
                         <a class="nav-link {% if ns == 'cadastros' and urlname|slice:':9' == 'motorista' %}active{% endif %}"
                            href="{% url 'cadastros:motorista_list' %}">
                             <i class="fas fa-truck"></i> Motoristas
+                        </a>
+                        <a class="nav-link {% if ns == 'cadastros' and urlname|slice:':11' == 'romaneiador' %}active{% endif %}"
+                           href="{% url 'cadastros:romaneiador_list' %}">
+                            <i class="fas fa-user-tag"></i> Romaneiadores
                         </a>
                         {% if user.is_staff %}
                         <a class="nav-link {% if ns == 'cadastros' and urlname|slice:':7' == 'usuario' %}active{% endif %}"

@@ -13,7 +13,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import ListView
 
-from apps.cadastros.models import Cliente, TipoMadeira
+from apps.cadastros.models import Cliente, Romaneiador, TipoMadeira
 from apps.romaneio.models import Romaneio
 
 
@@ -49,6 +49,7 @@ def _romaneios_queryset(request):
     """
     mes, ano = get_mes_ano(request)
     cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
@@ -56,13 +57,16 @@ def _romaneios_queryset(request):
     direction = (request.GET.get("dir") or "asc").strip().lower()
     desc = direction == "desc"
 
-    qs = Romaneio.objects.select_related("cliente", "motorista").filter(
+    qs = Romaneio.objects.select_related("cliente", "motorista", "romaneiador").filter(
         data_romaneio__month=mes,
         data_romaneio__year=ano,
     )
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
+
+    if romaneiador_id:
+        qs = qs.filter(romaneiador_id=romaneiador_id)
 
     if numero_romaneio:
         qs = qs.filter(numero_romaneio=numero_romaneio)
@@ -118,6 +122,7 @@ class RelatorioRomaneiosView(LoginRequiredMixin, ListView):
         context["mes"] = mes
         context["ano"] = ano
         context["clientes"] = Cliente.objects.filter(ativo=True).order_by("nome")
+        context["romaneiadores"] = Romaneiador.objects.filter(ativo=True).order_by("nome")
         context["tipos_madeira"] = TipoMadeira.objects.order_by("nome")
         context["meses"] = range(1, 13)
 

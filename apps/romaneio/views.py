@@ -44,7 +44,7 @@ class RomaneioListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = self.model.objects.select_related("cliente", "motorista").order_by("-data_romaneio", "-id")
+        qs = self.model.objects.select_related("cliente", "motorista", "romaneiador").order_by("-data_romaneio", "-id")
 
         mes = self.request.GET.get("mes")
         ano = self.request.GET.get("ano")

@@ -170,3 +170,36 @@ class Motorista(models.Model):
         if self.placa_veiculo:
             return f"{self.nome} ({self.placa_veiculo})"
         return self.nome
+
+
+class Romaneiador(models.Model):
+    """Romaneiador: responsável pelo romaneio (base para comissão)."""
+
+    nome = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        verbose_name="Nome",
+    )
+    telefone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="Telefone",
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo",
+    )
+    data_cadastro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data do cadastro",
+    )
+
+    class Meta:
+        ordering = ["nome"]
+        verbose_name = "Romaneiador"
+        verbose_name_plural = "Romaneiadores"
+
+    def __str__(self) -> str:
+        return self.nome

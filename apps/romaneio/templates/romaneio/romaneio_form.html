@@ -235,16 +235,22 @@
               {% for err in form.modalidade.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label">Cliente *</label>
               {{ form.cliente }}
               {% for err in form.cliente.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label">Motorista</label>
               {{ form.motorista }}
               {% for err in form.motorista.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Romaneiador</label>
+              {{ form.romaneiador }}
+              {% for err in form.romaneiador.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
             </div>
           </div>
         </div>

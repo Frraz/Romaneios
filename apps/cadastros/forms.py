@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cliente, TipoMadeira, Motorista
+from .models import Cliente, TipoMadeira, Motorista, Romaneiador
 from decimal import Decimal
 import re
 
@@ -146,6 +146,29 @@ class MotoristaForm(forms.ModelForm):
             'placa_veiculo': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'ABC-1234',
+            }),
+            'ativo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+        }
+
+    def clean_nome(self):
+        nome = self.cleaned_data.get('nome', '')
+        return nome.upper().strip() if nome else nome
+
+
+class RomaneiadorForm(forms.ModelForm):
+    class Meta:
+        model = Romaneiador
+        fields = ['nome', 'telefone', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nome do romaneiador',
+            }),
+            'telefone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '(00) 00000-0000',
             }),
             'ativo': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',

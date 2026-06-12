@@ -4,7 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from apps.cadastros.models import Cliente, Motorista, TipoMadeira
+from apps.cadastros.models import Cliente, Motorista, Romaneiador, TipoMadeira
 from .models import ItemRomaneio, Romaneio, UnidadeRomaneio
 
 
@@ -23,6 +23,7 @@ class RomaneioForm(forms.ModelForm):
             "data_romaneio",
             "cliente",
             "motorista",
+            "romaneiador",
             "tipo_romaneio",
             "modalidade",
         ]
@@ -31,6 +32,7 @@ class RomaneioForm(forms.ModelForm):
             "data_romaneio": forms.DateInput(format="%Y-%m-%d", attrs={"class": "form-control", "type": "date"}),
             "cliente": forms.Select(attrs={"class": "form-control select2"}),
             "motorista": forms.Select(attrs={"class": "form-control select2"}),
+            "romaneiador": forms.Select(attrs={"class": "form-control select2"}),
             "tipo_romaneio": forms.Select(attrs={"class": "form-control"}),
             "modalidade": forms.Select(attrs={"class": "form-control"}),
         }
@@ -41,6 +43,8 @@ class RomaneioForm(forms.ModelForm):
         self.fields["cliente"].queryset = Cliente.objects.filter(ativo=True).order_by("nome")
         self.fields["motorista"].queryset = Motorista.objects.filter(ativo=True).order_by("nome")
         self.fields["motorista"].required = False
+        self.fields["romaneiador"].queryset = Romaneiador.objects.filter(ativo=True).order_by("nome")
+        self.fields["romaneiador"].required = False
 
         if self.instance and self.instance.pk and self.instance.data_romaneio:
             self.fields["data_romaneio"].initial = self.instance.data_romaneio.strftime("%Y-%m-%d")

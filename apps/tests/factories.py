@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from apps.cadastros.models import Cliente, Motorista, TipoMadeira
+from apps.cadastros.models import Cliente, Motorista, Romaneiador, TipoMadeira
 from apps.financeiro.models import Pagamento
 from apps.romaneio.models import ItemRomaneio, Romaneio, UnidadeRomaneio
 
@@ -51,6 +51,16 @@ def create_motorista(**kwargs) -> Motorista:
     }
     defaults.update(kwargs)
     return Motorista.objects.create(**defaults)
+
+
+def create_romaneiador(**kwargs) -> Romaneiador:
+    defaults = {
+        "nome": "Romaneiador Teste",
+        "telefone": None,
+        "ativo": True,
+    }
+    defaults.update(kwargs)
+    return Romaneiador.objects.create(**defaults)
 
 
 def create_romaneio(**kwargs) -> Romaneio:

@@ -10,8 +10,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from apps.financeiro.models import Pagamento
 from apps.romaneio.models import Romaneio
 
-from .forms import ClienteForm, TipoMadeiraForm, MotoristaForm
-from .models import Cliente, TipoMadeira, Motorista
+from .forms import ClienteForm, TipoMadeiraForm, MotoristaForm, RomaneiadorForm
+from .models import Cliente, TipoMadeira, Motorista, Romaneiador
 from django.db.models import ExpressionWrapper, DecimalField
 from decimal import Decimal
 from django.db.models import DecimalField, ExpressionWrapper, F, Subquery, Value
@@ -272,6 +272,57 @@ class MotoristaDeleteView(LoginRequiredMixin, DeleteView):
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, "Motorista excluído com sucesso!")
+        return super().delete(request, *args, **kwargs)
+
+
+# ========== ROMANEIADORES ==========
+
+class RomaneiadorListView(LoginRequiredMixin, ListView):
+    model = Romaneiador
+    template_name = "cadastros/romaneiador_list.html"
+    context_object_name = "romaneiadores"
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        busca = self.request.GET.get("q")
+        if busca:
+            qs = qs.filter(
+                Q(nome__icontains=busca)
+                | Q(telefone__icontains=busca)
+            )
+        return qs
+
+
+class RomaneiadorCreateView(LoginRequiredMixin, CreateView):
+    model = Romaneiador
+    form_class = RomaneiadorForm
+    template_name = "cadastros/romaneiador_form.html"
+    success_url = reverse_lazy("cadastros:romaneiador_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Romaneiador cadastrado com sucesso!")
+        return super().form_valid(form)
+
+
+class RomaneiadorUpdateView(LoginRequiredMixin, UpdateView):
+    model = Romaneiador
+    form_class = RomaneiadorForm
+    template_name = "cadastros/romaneiador_form.html"
+    success_url = reverse_lazy("cadastros:romaneiador_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Romaneiador atualizado com sucesso!")
+        return super().form_valid(form)
+
+
+class RomaneiadorDeleteView(LoginRequiredMixin, DeleteView):
+    model = Romaneiador
+    template_name = "cadastros/romaneiador_confirm_delete.html"
+    success_url = reverse_lazy("cadastros:romaneiador_list")
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Romaneiador excluído com sucesso!")
         return super().delete(request, *args, **kwargs)
 
 

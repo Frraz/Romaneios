@@ -22,6 +22,12 @@ urlpatterns = [
     path("motoristas/<int:pk>/editar/", views.MotoristaUpdateView.as_view(), name="motorista_update"),
     path("motoristas/<int:pk>/excluir/", views.MotoristaDeleteView.as_view(), name="motorista_delete"),
 
+    # Romaneiadores
+    path("romaneiadores/", views.RomaneiadorListView.as_view(), name="romaneiador_list"),
+    path("romaneiadores/novo/", views.RomaneiadorCreateView.as_view(), name="romaneiador_create"),
+    path("romaneiadores/<int:pk>/editar/", views.RomaneiadorUpdateView.as_view(), name="romaneiador_update"),
+    path("romaneiadores/<int:pk>/excluir/", views.RomaneiadorDeleteView.as_view(), name="romaneiador_delete"),
+
     # Operadores / Usuários
     path("usuarios/", views.UsuarioListView.as_view(), name="usuario_list"),
     path("usuarios/novo/", views.UsuarioCreateView.as_view(), name="usuario_create"),
