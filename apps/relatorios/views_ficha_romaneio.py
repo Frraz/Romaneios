@@ -230,6 +230,7 @@ def ficha_romaneios_export_excel(request):
 
     mes, ano = get_mes_ano(request)
     cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
     qs = _romaneios_queryset(request)
@@ -253,7 +254,7 @@ def ficha_romaneios_export_excel(request):
     ws = wb.active
     ws.title = f"Romaneios {mes:02d}-{ano}"
 
-    ws.merge_cells("A1:G1")
+    ws.merge_cells("A1:H1")
     ws["A1"] = f"FICHA DE ROMANEIOS — {mes:02d}/{ano}"
     ws["A1"].font = title_font
     ws["A1"].fill = brand_fill
@@ -266,21 +267,27 @@ def ficha_romaneios_export_excel(request):
         if c:
             cliente_nome = c.nome
 
+    romaneiador_nome = "Todos"
+    if romaneiador_id:
+        rom = Romaneiador.objects.filter(pk=romaneiador_id).first()
+        if rom:
+            romaneiador_nome = rom.nome
+
     madeira_nome = "Todas"
     if tipo_madeira_id:
         tm = TipoMadeira.objects.filter(pk=tipo_madeira_id).first()
         if tm:
             madeira_nome = tm.nome
 
-    ws.merge_cells("A2:G2")
-    ws["A2"] = f"Cliente: {cliente_nome}  |  Madeira: {madeira_nome}"
+    ws.merge_cells("A2:H2")
+    ws["A2"] = f"Cliente: {cliente_nome}  |  Romaneiador: {romaneiador_nome}  |  Madeira: {madeira_nome}"
     ws["A2"].font = Font(color="FFFFFF", bold=True, size=11)
     ws["A2"].fill = brand_fill
     ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[2].height = 20
 
     header_row = 4
-    headers = ["Data", "Nº Romaneio", "Cliente", "Motorista", "Tipo", "M³", "Total (R$)"]
+    headers = ["Data", "Nº Romaneio", "Cliente", "Motorista", "Romaneiador", "Tipo", "M³", "Total (R$)"]
     for col_idx, text in enumerate(headers, start=1):
         cell = ws.cell(row=header_row, column=col_idx, value=text)
         cell.font = Font(bold=True, color="1F2937")
@@ -289,7 +296,7 @@ def ficha_romaneios_export_excel(request):
         cell.border = border
 
     ws.freeze_panes = ws["A5"]
-    ws.auto_filter.ref = f"A{header_row}:G{header_row}"
+    ws.auto_filter.ref = f"A{header_row}:H{header_row}"
 
     row = header_row + 1
     for idx, r in enumerate(qs, start=1):
@@ -297,18 +304,19 @@ def ficha_romaneios_export_excel(request):
         ws.cell(row=row, column=2, value=r.numero_romaneio)
         ws.cell(row=row, column=3, value=r.cliente.nome if r.cliente else "")
         ws.cell(row=row, column=4, value=r.motorista.nome if r.motorista else "")
-        ws.cell(row=row, column=5, value=("Com frete" if r.tipo_romaneio == "COM_FRETE" else "Normal"))
-        ws.cell(row=row, column=6, value=float(r.m3_total or 0))
-        ws.cell(row=row, column=7, value=float(r.valor_total or 0))
+        ws.cell(row=row, column=5, value=r.romaneiador.nome if r.romaneiador else "")
+        ws.cell(row=row, column=6, value=("Com frete" if r.tipo_romaneio == "COM_FRETE" else "Normal"))
+        ws.cell(row=row, column=7, value=float(r.m3_total or 0))
+        ws.cell(row=row, column=8, value=float(r.valor_total or 0))
 
         ws.cell(row=row, column=1).number_format = "dd/mm/yyyy"
-        ws.cell(row=row, column=6).number_format = "0.000"
-        ws.cell(row=row, column=7).number_format = '"R$" #,##0.00'
+        ws.cell(row=row, column=7).number_format = "0.000"
+        ws.cell(row=row, column=8).number_format = '"R$" #,##0.00'
 
-        for cidx in range(1, 8):
+        for cidx in range(1, 9):
             cell = ws.cell(row=row, column=cidx)
             cell.border = border
-            cell.alignment = Alignment(horizontal="left" if cidx in (1, 3, 4, 5) else "right", vertical="center")
+            cell.alignment = Alignment(horizontal="left" if cidx in (1, 3, 4, 5, 6) else "right", vertical="center")
             if idx % 2 == 0:
                 cell.fill = zebra_fill
 
@@ -317,26 +325,26 @@ def ficha_romaneios_export_excel(request):
     last_row = row - 1
     total_row = last_row + 2
 
-    ws.cell(row=total_row, column=5, value="TOTAL").font = bold
-    ws.cell(row=total_row, column=5).fill = total_fill
-    ws.cell(row=total_row, column=5).border = border
-    ws.cell(row=total_row, column=5).alignment = Alignment(horizontal="right")
-
-    ws.cell(row=total_row, column=6, value=f"=SUM(F{header_row+1}:F{last_row})")
-    ws.cell(row=total_row, column=6).number_format = "0.000"
-    ws.cell(row=total_row, column=6).font = bold
+    ws.cell(row=total_row, column=6, value="TOTAL").font = bold
     ws.cell(row=total_row, column=6).fill = total_fill
     ws.cell(row=total_row, column=6).border = border
     ws.cell(row=total_row, column=6).alignment = Alignment(horizontal="right")
 
     ws.cell(row=total_row, column=7, value=f"=SUM(G{header_row+1}:G{last_row})")
-    ws.cell(row=total_row, column=7).number_format = '"R$" #,##0.00'
+    ws.cell(row=total_row, column=7).number_format = "0.000"
     ws.cell(row=total_row, column=7).font = bold
     ws.cell(row=total_row, column=7).fill = total_fill
     ws.cell(row=total_row, column=7).border = border
     ws.cell(row=total_row, column=7).alignment = Alignment(horizontal="right")
 
-    set_col_width(ws, {1: 12, 2: 14, 3: 34, 4: 22, 5: 12, 6: 10, 7: 14})
+    ws.cell(row=total_row, column=8, value=f"=SUM(H{header_row+1}:H{last_row})")
+    ws.cell(row=total_row, column=8).number_format = '"R$" #,##0.00'
+    ws.cell(row=total_row, column=8).font = bold
+    ws.cell(row=total_row, column=8).fill = total_fill
+    ws.cell(row=total_row, column=8).border = border
+    ws.cell(row=total_row, column=8).alignment = Alignment(horizontal="right")
+
+    set_col_width(ws, {1: 12, 2: 14, 3: 34, 4: 22, 5: 22, 6: 12, 7: 10, 8: 14})
 
     output = BytesIO()
     wb.save(output)
@@ -356,6 +364,7 @@ def ficha_romaneios_export_pdf(request):
     """Exporta a Ficha de Romaneios (por ROMANEIO) para PDF via WeasyPrint, respeitando filtros e ordenação."""
     mes, ano = get_mes_ano(request)
     cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
     qs = _romaneios_queryset(request)
@@ -365,6 +374,12 @@ def ficha_romaneios_export_pdf(request):
         c = Cliente.objects.filter(pk=cliente_id).first()
         if c:
             cliente_nome = c.nome
+
+    romaneiador_nome = "Todos"
+    if romaneiador_id:
+        rom = Romaneiador.objects.filter(pk=romaneiador_id).first()
+        if rom:
+            romaneiador_nome = rom.nome
 
     madeira_nome = "Todas"
     if tipo_madeira_id:
@@ -379,6 +394,7 @@ def ficha_romaneios_export_pdf(request):
         "mes": mes,
         "ano": ano,
         "cliente_nome": cliente_nome,
+        "romaneiador_nome": romaneiador_nome,
         "madeira_nome": madeira_nome,
         "total_m3": totais["total_m3"] or 0,
         "total_valor": totais["total_valor"] or 0,
