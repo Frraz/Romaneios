@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import csv
-import re
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import connection
 from django.db.models import IntegerField, Sum
 from django.db.models.expressions import RawSQL
 from django.http import HttpResponse
@@ -16,25 +16,26 @@ from django.views.generic import ListView
 from apps.cadastros.models import Cliente, Romaneiador, TipoMadeira
 from apps.romaneio.models import Romaneio
 
+from .utils import (
+    apply_periodo,
+    get_cliente_id,
+    parse_mes_ano,
+    periodo_label,
+    periodo_slug,
+    safe_filename,
+)
 
-def get_mes_ano(request) -> tuple[int, int]:
-    """Lê mes/ano da querystring e retorna defaults coerentes."""
-    now = timezone.localdate()
-    try:
-        mes = int(request.GET.get("mes", now.month))
-    except (TypeError, ValueError):
-        mes = now.month
-    try:
-        ano = int(request.GET.get("ano", now.year))
-    except (TypeError, ValueError):
-        ano = now.year
-    return mes, ano
+
+def get_mes_ano(request) -> tuple[int | None, int | None]:
+    """
+    Lê mes/ano da querystring (parser canônico compartilhado):
+    ausente → mês/ano atual; "" ("Todos") → None; inválido → atual.
+    """
+    return parse_mes_ano(request)
 
 
 def _safe_filename(value: str) -> str:
-    value = (value or "").strip()
-    value = re.sub(r"[^A-Za-z0-9._-]+", "_", value)
-    return value or "arquivo"
+    return safe_filename(value)
 
 
 def _romaneios_queryset(request):
@@ -48,7 +49,7 @@ def _romaneios_queryset(request):
       - Ao filtrar por itens, é necessário distinct() para não duplicar romaneios.
     """
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
@@ -57,10 +58,8 @@ def _romaneios_queryset(request):
     direction = (request.GET.get("dir") or "asc").strip().lower()
     desc = direction == "desc"
 
-    qs = Romaneio.objects.select_related("cliente", "motorista", "romaneiador").filter(
-        data_romaneio__month=mes,
-        data_romaneio__year=ano,
-    )
+    qs = Romaneio.objects.select_related("cliente", "motorista", "romaneiador")
+    qs = apply_periodo(qs, "data_romaneio", mes, ano)
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
@@ -81,14 +80,21 @@ def _romaneios_queryset(request):
 
     # Ordenação numérica segura do Nº Romaneio (CharField no banco).
     # Cast direto para IntegerField quebra quando o valor contém ponto ou letras (ex: "3107.1").
-    # Solução: usa CASE/WHEN com regex no Postgres — converte para integer só se for dígitos puros,
+    # Solução: CASE/WHEN — converte para integer só se for dígitos puros,
     # caso contrário retorna NULL (vai para o final na ordenação ASC).
-    qs = qs.annotate(
-        numero_int=RawSQL(
-            "CASE WHEN numero_romaneio ~ '^[0-9]+$' THEN numero_romaneio::integer ELSE NULL END",
-            [],
-            output_field=IntegerField(),
+    # A sintaxe depende do banco: regex (~) no Postgres, GLOB no SQLite (testes).
+    if connection.vendor == "postgresql":
+        numero_int_sql = (
+            "CASE WHEN numero_romaneio ~ '^[0-9]+$' "
+            "THEN numero_romaneio::integer ELSE NULL END"
         )
+    else:
+        numero_int_sql = (
+            "CASE WHEN numero_romaneio <> '' AND numero_romaneio NOT GLOB '*[^0-9]*' "
+            "THEN CAST(numero_romaneio AS INTEGER) ELSE NULL END"
+        )
+    qs = qs.annotate(
+        numero_int=RawSQL(numero_int_sql, [], output_field=IntegerField())
     )
 
     sort_map = {
@@ -144,6 +150,13 @@ class RelatorioRomaneiosView(LoginRequiredMixin, ListView):
         context["sort"] = (self.request.GET.get("sort") or "data")
         context["dir"] = (self.request.GET.get("dir") or "asc")
 
+        # Querystring atual sem sort/dir/page — base para links de ordenação
+        # (preserva mes/ano inclusive quando vazios = "Todos")
+        base_params = self.request.GET.copy()
+        for k in ("sort", "dir", "page"):
+            base_params.pop(k, None)
+        context["base_qs"] = base_params.urlencode()
+
         return context
 
 
@@ -154,11 +167,11 @@ def ficha_romaneios_export(request):
     Respeita filtros: mes/ano, cliente, numero_romaneio, tipo_madeira_id.
     """
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
-    qs = Romaneio.objects.filter(data_romaneio__month=mes, data_romaneio__year=ano)
+    qs = apply_periodo(Romaneio.objects.all(), "data_romaneio", mes, ano)
 
     if cliente_id:
         qs = qs.filter(cliente_id=cliente_id)
@@ -170,7 +183,8 @@ def ficha_romaneios_export(request):
     qs = qs.select_related("cliente", "motorista").prefetch_related("itens__tipo_madeira")
 
     response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = f'attachment; filename="relatorio_romaneios_{mes:02d}_{ano}.csv"'
+    filename = safe_filename(f"relatorio_romaneios_{periodo_slug(mes, ano)}.csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     writer = csv.writer(response, delimiter=";")
 
     writer.writerow([
@@ -229,7 +243,7 @@ def ficha_romaneios_export_excel(request):
     from openpyxl.utils import get_column_letter
 
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
@@ -252,10 +266,10 @@ def ficha_romaneios_export_excel(request):
 
     wb = Workbook()
     ws = wb.active
-    ws.title = f"Romaneios {mes:02d}-{ano}"
+    ws.title = f"Romaneios {periodo_slug(mes, ano)}"
 
     ws.merge_cells("A1:H1")
-    ws["A1"] = f"FICHA DE ROMANEIOS — {mes:02d}/{ano}"
+    ws["A1"] = f"FICHA DE ROMANEIOS — {periodo_label(mes, ano)}"
     ws["A1"].font = title_font
     ws["A1"].fill = brand_fill
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -350,7 +364,7 @@ def ficha_romaneios_export_excel(request):
     wb.save(output)
     output.seek(0)
 
-    filename = _safe_filename(f"ficha_romaneios_{mes:02d}_{ano}.xlsx")
+    filename = safe_filename(f"ficha_romaneios_{periodo_slug(mes, ano)}.xlsx")
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -363,7 +377,7 @@ def ficha_romaneios_export_excel(request):
 def ficha_romaneios_export_pdf(request):
     """Exporta a Ficha de Romaneios (por ROMANEIO) para PDF via WeasyPrint, respeitando filtros e ordenação."""
     mes, ano = get_mes_ano(request)
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     romaneiador_id = (request.GET.get("romaneiador") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
@@ -393,6 +407,7 @@ def ficha_romaneios_export_pdf(request):
         "rows": list(qs),
         "mes": mes,
         "ano": ano,
+        "periodo_label": periodo_label(mes, ano),
         "cliente_nome": cliente_nome,
         "romaneiador_nome": romaneiador_nome,
         "madeira_nome": madeira_nome,
@@ -414,7 +429,7 @@ def ficha_romaneios_export_pdf(request):
             content_type="text/plain; charset=utf-8",
         )
 
-    filename = _safe_filename(f"ficha_romaneios_{mes:02d}_{ano}.pdf")
+    filename = safe_filename(f"ficha_romaneios_{periodo_slug(mes, ano)}.pdf")
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response

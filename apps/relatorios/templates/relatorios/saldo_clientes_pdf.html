@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Saldo de Clientes</title>
+
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm;
+
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 10px;
+        color: #666;
+      }
+    }
+
+    :root{
+      --brand: #246b29;
+      --text: #222;
+      --muted: #666;
+      --line: #cfd4dc;
+      --head: #eef3ef;
+      --soft: #f6f7f8;
+
+      --ok: #198754;
+      --bad: #dc3545;
+    }
+
+    html, body { padding: 0; margin: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .header {
+      border-bottom: 2px solid var(--brand);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .header table { width: 100%; border-collapse: collapse; }
+    .title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.1;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .right { text-align: right; }
+
+    .filters {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .filters b { color: var(--text); }
+
+    .kpis {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0 12px 0;
+    }
+    .kpis table { width: 100%; border-collapse: collapse; }
+    .kpis td { padding: 2px 6px; }
+    .k {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .v {
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .v.receber  { color: var(--bad); }
+    .v.creditos { color: var(--ok); }
+
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    table.tbl th, table.tbl td {
+      border: 1px solid var(--line);
+      padding: 6px;
+      font-size: 11px;
+      vertical-align: top;
+    }
+    table.tbl th {
+      background: var(--head);
+      text-align: left;
+      font-weight: 800;
+    }
+
+    .num    { text-align: right; white-space: nowrap; }
+    .center { text-align: center; white-space: nowrap; }
+    .muted  { color: var(--muted); }
+
+    table.tbl tbody tr:nth-child(even) td { background: #fafafa; }
+    thead { display: table-header-group; }
+    tr    { page-break-inside: avoid; }
+
+    .saldo-neg  { color: var(--bad); font-weight: 900; }
+    .saldo-pos  { color: var(--ok);  font-weight: 900; }
+    .saldo-zero { color: #444;       font-weight: 900; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 8px;
+      color: #fff;
+    }
+    .badge-devendo { background: var(--bad); }
+    .badge-credito { background: var(--ok); }
+    .badge-zerado  { background: #6c757d; }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <table>
+      <tr>
+        <td>
+          <p class="title">Saldo de Clientes</p>
+          <div class="sub">Gerado em: {{ now|date:"d/m/Y H:i" }}</div>
+
+          <div class="filters">
+            Tipo de saldo: <b>{{ tipo_saldo_label }}</b>
+            {% if q %}&nbsp;|&nbsp; Busca: <b>{{ q }}</b>{% endif %}
+          </div>
+        </td>
+
+        <td class="right">
+          <div class="sub"><b>Resumo</b></div>
+          <div class="sub">Saldo atual de cada cliente (todo o histórico)</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="kpis">
+    <table>
+      <tr>
+        <td style="width:33.33%;">
+          <div class="k">Clientes exibidos</div>
+          <div class="v">{{ qtd_clientes }}</div>
+        </td>
+        <td style="width:33.33%;">
+          <div class="k">Total a receber</div>
+          <div class="v receber">R$ {{ total_receber|floatformat:2 }}</div>
+        </td>
+        <td style="width:33.33%;">
+          <div class="k">Total de créditos</div>
+          <div class="v creditos">R$ {{ total_creditos|floatformat:2 }}</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th style="width:110px;">Telefone</th>
+        <th style="width:120px;">CPF/CNPJ</th>
+        <th style="width:110px;" class="num">Saldo (R$)</th>
+        <th style="width:80px;" class="center">Situação</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for cliente in clientes %}
+        <tr>
+          <td>{{ cliente.nome }}</td>
+          <td>{% if cliente.telefone %}{{ cliente.telefone }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if cliente.cpf_cnpj %}{{ cliente.cpf_cnpj }}{% else %}<span class="muted">—</span>{% endif %}</td>
+
+          <td class="num">
+            {% if cliente.saldo_calc < 0 %}
+              <span class="saldo-neg">- R$ {{ cliente.saldo_calc|floatformat:2|cut:"-" }}</span>
+            {% elif cliente.saldo_calc > 0 %}
+              <span class="saldo-pos">R$ {{ cliente.saldo_calc|floatformat:2 }}</span>
+            {% else %}
+              <span class="saldo-zero">R$ {{ cliente.saldo_calc|floatformat:2 }}</span>
+            {% endif %}
+          </td>
+
+          <td class="center">
+            {% if cliente.saldo_calc < 0 %}
+              <span class="badge badge-devendo">Devendo</span>
+            {% elif cliente.saldo_calc > 0 %}
+              <span class="badge badge-credito">Crédito</span>
+            {% else %}
+              <span class="badge badge-zerado">Zerado</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="center muted" style="padding:10px;">
+            Nenhum cliente encontrado com o filtro selecionado.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer-note">
+    Saldo negativo indica valores a receber; saldo positivo indica crédito do cliente.<br>
+    Documento gerado automaticamente pelo sistema MadereiraJD.
+  </div>
+</body>
+</html>

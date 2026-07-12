@@ -10,22 +10,20 @@
         <i class="fas fa-exchange-alt"></i> Fluxo Financeiro
       </div>
 
-      {# Export do período (preserva filtros) #}
+      {# Export do período: repassa a querystring atual — exporta exatamente o filtro da tela #}
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente_id numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id %}
-          <a class="btn btn-outline-success btn-sm"
-             href="{% url 'relatorios:fluxo_financeiro_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente_id={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}"
-             title="Exportar fluxo financeiro do período em Excel (.xlsx)">
-            <i class="fas fa-file-excel"></i> Excel
-          </a>
+        <a class="btn btn-outline-success btn-sm"
+           href="{% url 'relatorios:fluxo_financeiro_export_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar fluxo financeiro do período em Excel (.xlsx)">
+          <i class="fas fa-file-excel"></i> Excel
+        </a>
 
-          <a class="btn btn-outline-danger btn-sm"
-             href="{% url 'relatorios:fluxo_financeiro_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente_id={{ cliente_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}"
-             title="Exportar fluxo financeiro do período em PDF"
-             target="_blank">
-            <i class="fas fa-file-pdf"></i> PDF
-          </a>
-        {% endwith %}
+        <a class="btn btn-outline-danger btn-sm"
+           href="{% url 'relatorios:fluxo_financeiro_export_pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar fluxo financeiro do período em PDF"
+           target="_blank">
+          <i class="fas fa-file-pdf"></i> PDF
+        </a>
       </div>
     </div>
 
@@ -164,7 +162,7 @@
           <div class="p-3 border rounded bg-light h-100">
             <div class="d-flex justify-content-between align-items-start">
               <div>
-                <div class="text-muted small">Saldo (Recebido − Vendas)</div>
+                <div class="text-muted small">Saldo do período (Recebido − Vendas)</div>
                 <div class="fw-bold fs-4 {{ saldo_mes_classe }}">R$ {{ saldo_mes|floatformat:2 }}</div>
               </div>
               <div class="fs-4 text-warning"><i class="fas fa-balance-scale"></i></div>
@@ -180,6 +178,45 @@
             </div>
           </div>
         </div>
+
+        {% if saldo_anterior is not None %}
+          <div class="col-lg-4">
+            <div class="p-3 border rounded bg-light h-100">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="text-muted small">Saldo anterior (antes do período)</div>
+                  <div class="fw-bold fs-4 {% if saldo_anterior < 0 %}text-danger{% elif saldo_anterior > 0 %}text-success{% else %}text-secondary{% endif %}">
+                    R$ {{ saldo_anterior|floatformat:2 }}
+                  </div>
+                </div>
+                <div class="fs-4 text-secondary"><i class="fas fa-history"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="p-3 border rounded bg-light h-100">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="text-muted small">Saldo final do cliente (ao fim do período)</div>
+                  <div class="fw-bold fs-4 {% if saldo_final < 0 %}text-danger{% elif saldo_final > 0 %}text-success{% else %}text-secondary{% endif %}">
+                    R$ {{ saldo_final|floatformat:2 }}
+                  </div>
+                </div>
+                <div class="fs-4 text-secondary"><i class="fas fa-wallet"></i></div>
+              </div>
+              <div class="text-muted small mt-1">
+                {% if saldo_final < 0 %}
+                  Cliente deve para a madeireira.
+                {% elif saldo_final > 0 %}
+                  Cliente possui crédito.
+                {% else %}
+                  Cliente está quitado.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
       </div>
 
       {# ===== Tabela única (Movimentações) ===== #}
@@ -198,6 +235,25 @@
           </thead>
 
           <tbody>
+            {% if saldo_anterior is not None %}
+              <tr class="table-secondary">
+                <td>—</td>
+                <td class="text-center">—</td>
+                <td class="fw-bold">Saldo anterior (antes do período)</td>
+                <td class="text-end">—</td>
+                <td class="text-end">—</td>
+                <td class="text-end">—</td>
+                <td class="text-end">
+                  {% if saldo_anterior < 0 %}
+                    <span class="fw-bold text-danger">- R$ {{ saldo_anterior|floatformat:2|cut:"-" }}</span>
+                  {% elif saldo_anterior > 0 %}
+                    <span class="fw-bold text-success">R$ {{ saldo_anterior|floatformat:2 }}</span>
+                  {% else %}
+                    <span class="fw-bold text-muted">R$ {{ saldo_anterior|floatformat:2 }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endif %}
             {% for m in movimentacoes %}
               <tr>
                 <td>{{ m.data|date:"d/m/Y" }}</td>
@@ -247,6 +303,10 @@
 
       <div class="text-muted small mt-3">
         Dica: este fluxo junta <b>compras (romaneios)</b> e <b>pagamentos</b> em ordem de data.
+        {% if saldo_parcial %}
+          <br><i class="fas fa-info-circle"></i>
+          Com filtro de Nº Romaneio ou Tipo de madeira, o saldo por linha considera apenas as movimentações exibidas.
+        {% endif %}
       </div>
     </div>
   </div>

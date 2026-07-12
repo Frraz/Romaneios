@@ -16,7 +16,14 @@ from apps.cadastros.models import TipoMadeira, Cliente
 from apps.financeiro.models import Pagamento
 from apps.romaneio.models import Romaneio
 
-from .views_ficha_romaneio import _safe_filename, get_mes_ano
+from .utils import (
+    get_cliente_id,
+    inicio_periodo,
+    parse_mes_ano,
+    periodo_label,
+    periodo_slug,
+    safe_filename,
+)
 
 
 # =============================================================================
@@ -55,16 +62,22 @@ def _to_decimal(value) -> Decimal:
         return Decimal("0")
 
 
-def _calc_saldos_por_movimento(movs: list[MovimentoFluxo]) -> list[MovimentoFluxo]:
+def _calc_saldos_por_movimento(
+    movs: list[MovimentoFluxo],
+    saldos_iniciais: dict[int, Decimal] | None = None,
+) -> list[MovimentoFluxo]:
     """
     Calcula saldo_atual por cliente, em ordem cronológica (asc).
     Convenção:
       - VENDA aumenta a dívida do cliente => saldo fica mais negativo (saldo -= total)
       - PAGAMENTO reduz a dívida => saldo aumenta (saldo += credito)
 
+    saldos_iniciais: saldo de cada cliente ANTES do período filtrado
+    ("saldo anterior"); cliente ausente inicia em 0.
+
     Retorna lista com saldo_atual preenchido, na mesma ordem de entrada.
     """
-    saldos: dict[int, Decimal] = {}
+    saldos: dict[int, Decimal] = dict(saldos_iniciais or {})
 
     out: list[MovimentoFluxo] = []
     for m in movs:
@@ -91,6 +104,39 @@ def _calc_saldos_por_movimento(movs: list[MovimentoFluxo]) -> list[MovimentoFlux
     return out
 
 
+def _saldos_anteriores(cliente_ids: Iterable[int], inicio) -> dict[int, Decimal]:
+    """
+    Saldo de cada cliente ANTES de `inicio` (pagamentos - vendas até a véspera).
+
+    Ignora deliberadamente filtros de tipo de madeira / nº romaneio: saldo é um
+    conceito financeiro do cliente (mesma definição de Cliente.saldo_atual).
+    """
+    ids = list(cliente_ids)
+    if not ids or inicio is None:
+        return {}
+
+    vendas = (
+        Romaneio.objects
+        .filter(cliente_id__in=ids, data_romaneio__lt=inicio)
+        .values("cliente_id")
+        .annotate(total=Sum("valor_total"))
+    )
+    pagamentos = (
+        Pagamento.objects
+        .filter(cliente_id__in=ids, data_pagamento__lt=inicio)
+        .values("cliente_id")
+        .annotate(total=Sum("valor"))
+    )
+
+    saldos: dict[int, Decimal] = {}
+    for row in pagamentos:
+        saldos[row["cliente_id"]] = _to_decimal(row["total"])
+    for row in vendas:
+        saldos[row["cliente_id"]] = saldos.get(row["cliente_id"], Decimal("0")) - _to_decimal(row["total"])
+
+    return {cid: saldo.quantize(Decimal("0.01")) for cid, saldo in saldos.items()}
+
+
 # =============================================================================
 # Helper: lê mes/ano do GET suportando "" = "Todos"
 # =============================================================================
@@ -100,37 +146,12 @@ def _get_mes_ano_filtro(request) -> tuple[int | None, int | None]:
       - int  → filtro aplicado
       - None → "Todos" (sem restrição)
 
-    Lógica:
-      - Se o parâmetro não existe no GET (primeira visita), usa o mês/ano atual.
-      - Se o parâmetro existe mas é "" (usuário escolheu "Todos"), retorna None.
+    Delegado ao parser canônico compartilhado pelos relatórios (utils.parse_mes_ano):
+      - parâmetro ausente (primeira visita) → mês/ano atual
+      - parâmetro "" ("Todos")              → None
+      - inválido/fora de faixa              → mês/ano atual
     """
-    hoje = timezone.localdate()
-
-    mes_raw = request.GET.get("mes")   # None = não presente; "" = "Todos"
-    ano_raw = request.GET.get("ano")
-
-    if mes_raw is None:
-        # primeira visita: padrão = mês atual
-        mes = hoje.month
-    elif mes_raw == "":
-        mes = None
-    else:
-        try:
-            mes = int(mes_raw)
-        except (ValueError, TypeError):
-            mes = hoje.month
-
-    if ano_raw is None:
-        ano = hoje.year
-    elif ano_raw == "":
-        ano = None
-    else:
-        try:
-            ano = int(ano_raw)
-        except (ValueError, TypeError):
-            ano = hoje.year
-
-    return mes, ano
+    return parse_mes_ano(request)
 
 
 # =============================================================================
@@ -141,9 +162,7 @@ def _fluxo_querysets(request):
 
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
-    # Aceita tanto "cliente_id" (usado aqui) quanto "cliente" (usado nas fichas),
-    # para que o filtro funcione independente de qual nome o link/bookmark usou.
-    cliente_id      = (request.GET.get("cliente_id") or request.GET.get("cliente") or "").strip()
+    cliente_id      = get_cliente_id(request)
 
     vendas_qs = (
         Romaneio.objects
@@ -177,9 +196,18 @@ def _fluxo_querysets(request):
     return vendas_qs, pagamentos_qs
 
 
-def _build_movimentacoes(vendas_qs: Iterable[Romaneio], pagamentos_qs: Iterable[Pagamento]) -> list[MovimentoFluxo]:
+def _build_movimentacoes(
+    vendas_qs: Iterable[Romaneio],
+    pagamentos_qs: Iterable[Pagamento],
+    inicio=None,
+) -> list[MovimentoFluxo]:
     """
     Constrói lista única de movimentações (vendas + pagamentos) com saldo por linha.
+
+    inicio: data de início do período filtrado. Quando informada, o saldo por
+    linha parte do saldo do cliente ANTES do período ("saldo anterior") em vez
+    de zero. Passe None quando a lista for parcial (filtros de nº romaneio /
+    tipo de madeira) — nesse caso um saldo corrido seria enganoso.
 
     Ordenação:
       - Para calcular saldo corretamente, processamos em ordem ASC por data.
@@ -216,11 +244,39 @@ def _build_movimentacoes(vendas_qs: Iterable[Romaneio], pagamentos_qs: Iterable[
     # ASC para calcular saldo por linha
     movs.sort(key=lambda x: (x.data, x.cliente_nome, (x.numero_romaneio or "")))
 
-    movs_com_saldo = _calc_saldos_por_movimento(movs)
+    saldos_iniciais: dict[int, Decimal] = {}
+    if inicio is not None and movs:
+        saldos_iniciais = _saldos_anteriores({m.cliente_id for m in movs}, inicio)
+
+    movs_com_saldo = _calc_saldos_por_movimento(movs, saldos_iniciais)
 
     # ASC para exibição (mais antigo primeiro — ajuste para DESC se preferir)
     movs_com_saldo.sort(key=lambda x: (x.data, x.cliente_nome, (x.numero_romaneio or "")))
     return movs_com_saldo
+
+
+def _kpis_saldo_cliente(cliente_id: str, inicio, vendas_total, pagamentos_total):
+    """
+    KPIs de saldo do cliente selecionado: (saldo_anterior, saldo_final).
+
+    saldo_final = saldo_anterior + recebido no período - vendas do período,
+    ou seja, o saldo real do cliente ao fim do período filtrado.
+
+    Retorna (None, None) quando não aplicável: sem cliente único selecionado
+    ou sem período contíguo (inicio is None).
+    """
+    if not cliente_id or inicio is None:
+        return None, None
+    try:
+        cid = int(cliente_id)
+    except (TypeError, ValueError):
+        return None, None
+
+    saldo_anterior = _saldos_anteriores([cid], inicio).get(cid, Decimal("0.00"))
+    saldo_final = (
+        saldo_anterior + _to_decimal(pagamentos_total) - _to_decimal(vendas_total)
+    ).quantize(Decimal("0.01"))
+    return saldo_anterior, saldo_final
 
 
 # =============================================================================
@@ -232,6 +288,10 @@ class RelatorioFluxoView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mes, ano = _get_mes_ano_filtro(self.request)
+
+        cliente_id      = get_cliente_id(self.request)
+        numero_romaneio = (self.request.GET.get("numero_romaneio") or "").strip()
+        tipo_madeira_id = (self.request.GET.get("tipo_madeira_id") or "").strip()
 
         vendas_qs, pagamentos_qs = _fluxo_querysets(self.request)
 
@@ -251,7 +311,15 @@ class RelatorioFluxoView(LoginRequiredMixin, TemplateView):
         anos_pagamentos = [d.year for d in Pagamento.objects.dates("data_pagamento", "year", order="ASC")]
         anos = sorted(set(anos_romaneios + anos_pagamentos)) or [timezone.localdate().year]
 
-        movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs)
+        # Saldo corrido só é confiável quando a lista não é parcial
+        # (filtros de nº romaneio / tipo de madeira escondem movimentações).
+        saldo_parcial = bool(numero_romaneio or tipo_madeira_id)
+        inicio = None if saldo_parcial else inicio_periodo(mes, ano)
+
+        movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs, inicio=inicio)
+        saldo_anterior, saldo_final = _kpis_saldo_cliente(
+            cliente_id, inicio, vendas_total, pagamentos_total
+        )
 
         context.update(
             {
@@ -261,18 +329,21 @@ class RelatorioFluxoView(LoginRequiredMixin, TemplateView):
                 "meses": range(1, 13),
                 "anos": anos,
                 "clientes": Cliente.objects.filter(ativo=True).order_by("nome"),
-                "cliente_id": (self.request.GET.get("cliente_id") or self.request.GET.get("cliente") or "").strip(),
+                "cliente_id": cliente_id,
                 "tipos_madeira": TipoMadeira.objects.order_by("nome"),
                 # KPIs
                 "vendas": vendas_total,
                 "pagamentos": pagamentos_total,
                 "saldo_mes": saldo_mes,
                 "saldo_mes_classe": saldo_mes_classe,
+                "saldo_anterior": saldo_anterior,
+                "saldo_final": saldo_final,
+                "saldo_parcial": saldo_parcial,
                 # Tabela única
                 "movimentacoes": movimentacoes,
                 # Filtros extras
-                "numero_romaneio": (self.request.GET.get("numero_romaneio") or "").strip(),
-                "tipo_madeira_id": (self.request.GET.get("tipo_madeira_id") or "").strip(),
+                "numero_romaneio": numero_romaneio,
+                "tipo_madeira_id": tipo_madeira_id,
                 "now": timezone.localtime(),
             }
         )
@@ -294,13 +365,23 @@ def fluxo_financeiro_export_excel(request):
     from openpyxl.utils import get_column_letter
 
     mes, ano = _get_mes_ano_filtro(request)
+    cliente_id      = get_cliente_id(request)
+    numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
+    tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
+
     vendas_qs, pagamentos_qs = _fluxo_querysets(request)
 
     vendas_total     = vendas_qs.aggregate(total=Sum("valor_total")).get("total") or 0
     pagamentos_total = pagamentos_qs.aggregate(total=Sum("valor")).get("total") or 0
     saldo = pagamentos_total - vendas_total
 
-    movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs)
+    saldo_parcial = bool(numero_romaneio or tipo_madeira_id)
+    inicio = None if saldo_parcial else inicio_periodo(mes, ano)
+
+    movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs, inicio=inicio)
+    saldo_anterior, saldo_final = _kpis_saldo_cliente(
+        cliente_id, inicio, vendas_total, pagamentos_total
+    )
 
     brand_fill = PatternFill("solid", fgColor="246B29")
     head_fill  = PatternFill("solid", fgColor="EEF3EF")
@@ -316,28 +397,18 @@ def fluxo_financeiro_export_excel(request):
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
     # Título do período
-    if mes and ano:
-        periodo_label = f"{mes:02d}/{ano}"
-    elif mes:
-        periodo_label = f"Mês {mes:02d} / Todos os anos"
-    elif ano:
-        periodo_label = f"Todos os meses / {ano}"
-    else:
-        periodo_label = "Todos os períodos"
+    label_periodo = periodo_label(mes, ano)
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Resumo"
 
     ws.merge_cells("A1:D1")
-    ws["A1"] = f"FLUXO FINANCEIRO — {periodo_label}"
+    ws["A1"] = f"FLUXO FINANCEIRO — {label_periodo}"
     ws["A1"].font  = title_font
     ws["A1"].fill  = brand_fill
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 28
-
-    numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
-    tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
 
     madeira_nome = "Todas"
     if tipo_madeira_id:
@@ -353,10 +424,13 @@ def fluxo_financeiro_export_excel(request):
     ws.row_dimensions[2].height = 20
 
     resumo = [
-        ("Vendas (R$)",      float(vendas_total or 0)),
-        ("Pagamentos (R$)",  float(pagamentos_total or 0)),
-        ("Saldo (R$)",       float(saldo or 0)),
+        ("Vendas (R$)",            float(vendas_total or 0)),
+        ("Pagamentos (R$)",        float(pagamentos_total or 0)),
+        ("Saldo do período (R$)",  float(saldo or 0)),
     ]
+    if saldo_anterior is not None:
+        resumo.append(("Saldo anterior (R$)", float(saldo_anterior)))
+        resumo.append(("Saldo final (R$)",    float(saldo_final)))
     start = 4
     for i, (k, v) in enumerate(resumo):
         r = start + i
@@ -379,6 +453,19 @@ def fluxo_financeiro_export_excel(request):
         cell.alignment = Alignment(horizontal="center")
 
     row = 2
+
+    # Linha de abertura com o saldo do cliente antes do período filtrado
+    if saldo_anterior is not None:
+        ws_m.cell(row=row, column=3, value="SALDO ANTERIOR")
+        ws_m.cell(row=row, column=7, value=float(saldo_anterior)).number_format = '"R$" #,##0.00'
+        for c in range(1, 8):
+            cell = ws_m.cell(row=row, column=c)
+            cell.font      = bold
+            cell.fill      = head_fill
+            cell.border    = border
+            cell.alignment = Alignment(horizontal="left" if c == 3 else "right", vertical="center")
+        row += 1
+
     for idx, m in enumerate(movimentacoes, start=1):
         ws_m.cell(row=row, column=1, value=m.data).number_format = "dd/mm/yyyy"
         ws_m.cell(row=row, column=2, value=m.numero_romaneio or "")
@@ -406,8 +493,7 @@ def fluxo_financeiro_export_excel(request):
     output.seek(0)
 
     # Nome do arquivo com período
-    periodo_safe = periodo_label.replace("/", "_").replace(" ", "")
-    filename = _safe_filename(f"fluxo_financeiro_{periodo_safe}.xlsx")
+    filename = safe_filename(f"fluxo_financeiro_{periodo_slug(mes, ano)}.xlsx")
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -422,20 +508,29 @@ def fluxo_financeiro_export_pdf(request):
     Exporta o Fluxo Financeiro do período para PDF via WeasyPrint.
     """
     mes, ano = _get_mes_ano_filtro(request)
+    cliente_id      = get_cliente_id(request)
+    numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
+    tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
+
     vendas_qs, pagamentos_qs = _fluxo_querysets(request)
 
     vendas_total     = vendas_qs.aggregate(total=Sum("valor_total")).get("total") or 0
     pagamentos_total = pagamentos_qs.aggregate(total=Sum("valor")).get("total") or 0
     saldo = pagamentos_total - vendas_total
 
-    tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
     madeira_nome = ""
     if tipo_madeira_id:
         tm = TipoMadeira.objects.filter(pk=tipo_madeira_id).first()
         if tm:
             madeira_nome = tm.nome
 
-    movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs)
+    saldo_parcial = bool(numero_romaneio or tipo_madeira_id)
+    inicio = None if saldo_parcial else inicio_periodo(mes, ano)
+
+    movimentacoes = _build_movimentacoes(vendas_qs, pagamentos_qs, inicio=inicio)
+    saldo_anterior, saldo_final = _kpis_saldo_cliente(
+        cliente_id, inicio, vendas_total, pagamentos_total
+    )
 
     context = {
         "mes": mes,
@@ -443,8 +538,11 @@ def fluxo_financeiro_export_pdf(request):
         "vendas_total": vendas_total,
         "pagamentos_total": pagamentos_total,
         "saldo": saldo,
+        "saldo_anterior": saldo_anterior,
+        "saldo_final": saldo_final,
+        "saldo_parcial": saldo_parcial,
         "movimentacoes": movimentacoes,
-        "numero_romaneio": (request.GET.get("numero_romaneio") or "").strip(),
+        "numero_romaneio": numero_romaneio,
         "madeira_nome": madeira_nome,
         "now": timezone.localtime(),
     }
@@ -462,13 +560,7 @@ def fluxo_financeiro_export_pdf(request):
             content_type="text/plain; charset=utf-8",
         )
 
-    periodo_safe = (
-        f"{mes:02d}_{ano}" if mes and ano
-        else f"mes{mes:02d}" if mes
-        else f"ano{ano}" if ano
-        else "todos"
-    )
-    filename = _safe_filename(f"fluxo_financeiro_{periodo_safe}.pdf")
+    filename = safe_filename(f"fluxo_financeiro_{periodo_slug(mes, ano)}.pdf")
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response

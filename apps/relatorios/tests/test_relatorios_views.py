@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import datetime
 from decimal import Decimal
+from io import BytesIO
 
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.relatorios.utils import inicio_periodo, parse_mes_ano, periodo_label, periodo_slug
 from apps.relatorios.views_fluxo_financeiro import _fluxo_querysets
 from apps.tests.factories import (
     create_cliente,
@@ -16,6 +19,14 @@ from apps.tests.factories import (
     create_tipo_madeira,
     create_user,
 )
+
+
+def _mes_anterior(dia: datetime.date) -> datetime.date:
+    """Retorna o dia 1 do mês anterior ao informado."""
+    primeiro = dia.replace(day=1)
+    if primeiro.month == 1:
+        return primeiro.replace(year=primeiro.year - 1, month=12)
+    return primeiro.replace(month=primeiro.month - 1)
 
 
 class FluxoClienteParamToleranceTests(TestCase):
@@ -274,13 +285,10 @@ class RelatorioFluxoFinanceiroTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
 
-        vendas = list(resp.context["vendas_detalhadas"])
-        pagamentos = list(resp.context["pagamentos_detalhados"])
-
-        # vendas: só cliente 1
-        self.assertTrue(all(v.cliente_id == self.c1.id for v in vendas))
-        # pagamentos: só cliente 1
-        self.assertTrue(all(p.cliente_id == self.c1.id for p in pagamentos))
+        movimentacoes = list(resp.context["movimentacoes"])
+        self.assertTrue(movimentacoes)
+        # vendas e pagamentos: só cliente 1 (madeira A)
+        self.assertTrue(all(m.cliente_id == self.c1.id for m in movimentacoes))
 
         # totais coerentes
         self.assertEqual(resp.context["vendas"], Decimal("10.00"))  # 1m3 * 10
@@ -344,4 +352,311 @@ class RelatorioFichaMadeirasTests(TestCase):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         self.assertTrue(resp.content[:2] == b"PK")
+
+
+class ParseMesAnoTests(TestCase):
+    """Parser canônico de mes/ano compartilhado pelos relatórios."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.hoje = timezone.localdate()
+
+    def _parse(self, params, **kwargs):
+        request = self.factory.get("/relatorios/", params)
+        return parse_mes_ano(request, **kwargs)
+
+    def test_sem_parametros_usa_mes_ano_atual(self):
+        self.assertEqual(self._parse({}), (self.hoje.month, self.hoje.year))
+
+    def test_vazio_significa_todos(self):
+        self.assertEqual(self._parse({"mes": "", "ano": ""}), (None, None))
+
+    def test_vazio_com_allow_todos_false_usa_atual(self):
+        self.assertEqual(
+            self._parse({"mes": "", "ano": ""}, allow_todos=False),
+            (self.hoje.month, self.hoje.year),
+        )
+
+    def test_invalido_usa_atual(self):
+        # "None" literal era o que o link quebrado antigo enviava
+        for invalido in ("abc", "None"):
+            self.assertEqual(
+                self._parse({"mes": invalido, "ano": invalido}),
+                (self.hoje.month, self.hoje.year),
+            )
+
+    def test_fora_de_faixa_usa_atual(self):
+        self.assertEqual(self._parse({"mes": "13", "ano": "1800"}), (self.hoje.month, self.hoje.year))
+
+    def test_inicio_periodo(self):
+        self.assertEqual(inicio_periodo(7, 2026), datetime.date(2026, 7, 1))
+        self.assertEqual(inicio_periodo(None, 2026), datetime.date(2026, 1, 1))
+        self.assertIsNone(inicio_periodo(7, None))
+        self.assertIsNone(inicio_periodo(None, None))
+
+    def test_labels_e_slugs(self):
+        self.assertEqual(periodo_label(7, 2026), "07/2026")
+        self.assertEqual(periodo_label(None, None), "Todos os períodos")
+        self.assertEqual(periodo_slug(7, 2026), "07_2026")
+        self.assertEqual(periodo_slug(None, 2026), "ano2026")
+        self.assertEqual(periodo_slug(None, None), "todos")
+
+
+class FluxoSaldoAnteriorTests(TestCase):
+    """O saldo por linha e os KPIs devem considerar o histórico anterior ao período."""
+
+    def setUp(self):
+        self.user = create_user(username="rel_saldo_ant", password="12345678")
+        self.client.login(username="rel_saldo_ant", password="12345678")
+
+        self.today = timezone.localdate()
+        self.mes_passado = _mes_anterior(self.today)
+
+        self.tm = create_tipo_madeira(nome="MADEIRA SA", preco_normal=Decimal("10.00"), preco_com_frete=Decimal("20.00"))
+
+        self.c = create_cliente(nome="Cliente Saldo Anterior")
+        # Mês passado: venda 100 e pagamento 40 => saldo anterior = -60
+        r_old = create_romaneio(numero_romaneio="sa-old", cliente=self.c, data_romaneio=self.mes_passado)
+        create_item_romaneio(romaneio=r_old, tipo_madeira=self.tm, valor_unitario=Decimal("10.00"), quantidade_m3_total=Decimal("10.000"))
+        create_pagamento(cliente=self.c, data_pagamento=self.mes_passado, valor=Decimal("40.00"))
+
+        # Mês atual: venda 10 => saldo final = -70
+        r_new = create_romaneio(numero_romaneio="sa-new", cliente=self.c, data_romaneio=self.today)
+        create_item_romaneio(romaneio=r_new, tipo_madeira=self.tm, valor_unitario=Decimal("10.00"), quantidade_m3_total=Decimal("1.000"))
+
+    def test_mes_filtrado_com_cliente_mostra_saldo_anterior_e_final(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro"),
+            {"mes": self.today.month, "ano": self.today.year, "cliente_id": self.c.id},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertEqual(resp.context["saldo_anterior"], Decimal("-60.00"))
+        self.assertEqual(resp.context["saldo_final"], Decimal("-70.00"))
+
+        movs = list(resp.context["movimentacoes"])
+        self.assertEqual([m.numero_romaneio for m in movs], ["sa-new"])
+        # saldo da linha parte do saldo anterior (-60) e não de zero
+        self.assertEqual(movs[-1].saldo_atual, Decimal("-70.00"))
+
+    def test_mes_filtrado_sem_cliente_ainda_seeda_saldo_por_linha(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro"),
+            {"mes": self.today.month, "ano": self.today.year},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        # KPIs por cliente só aparecem com cliente selecionado
+        self.assertIsNone(resp.context["saldo_anterior"])
+        self.assertIsNone(resp.context["saldo_final"])
+
+        movs = [m for m in resp.context["movimentacoes"] if m.cliente_id == self.c.id]
+        self.assertEqual(movs[-1].saldo_atual, Decimal("-70.00"))
+
+    def test_todos_os_periodos_bate_com_saldo_atual_do_cliente(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro"),
+            {"mes": "", "ano": "", "cliente_id": self.c.id},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        movs = list(resp.context["movimentacoes"])
+        self.assertEqual(len(movs), 3)  # 2 vendas + 1 pagamento
+        self.assertEqual(movs[-1].saldo_atual, self.c.saldo_atual)
+        self.assertEqual(movs[-1].saldo_atual, Decimal("-70.00"))
+
+    def test_filtro_parcial_nao_seeda_e_marca_saldo_parcial(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro"),
+            {
+                "mes": self.today.month,
+                "ano": self.today.year,
+                "cliente_id": self.c.id,
+                "numero_romaneio": "sa-new",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context["saldo_parcial"])
+        self.assertIsNone(resp.context["saldo_anterior"])
+        movs = list(resp.context["movimentacoes"])
+        # lista parcial: saldo corrido reinicia em zero (comportamento anterior)
+        self.assertEqual(movs[-1].saldo_atual, Decimal("-10.00"))
+
+
+class ExportRespeitaFiltroTodosTests(TestCase):
+    """Exportações devem honrar exatamente o filtro da tela, inclusive 'Todos' (mes=""/ano="")."""
+
+    def setUp(self):
+        self.user = create_user(username="rel_todos", password="12345678")
+        self.client.login(username="rel_todos", password="12345678")
+
+        self.today = timezone.localdate()
+        self.ano_passado = self.today.replace(year=self.today.year - 1)
+
+        self.tm = create_tipo_madeira(nome="MADEIRA T", preco_normal=Decimal("10.00"), preco_com_frete=Decimal("20.00"))
+        self.c = create_cliente(nome="Cliente Todos")
+
+        r_old = create_romaneio(numero_romaneio="td-old", cliente=self.c, data_romaneio=self.ano_passado)
+        create_item_romaneio(romaneio=r_old, tipo_madeira=self.tm, valor_unitario=Decimal("10.00"), quantidade_m3_total=Decimal("1.000"))
+
+        r_new = create_romaneio(numero_romaneio="td-new", cliente=self.c, data_romaneio=self.today)
+        create_item_romaneio(romaneio=r_new, tipo_madeira=self.tm, valor_unitario=Decimal("10.00"), quantidade_m3_total=Decimal("2.000"))
+
+    def _load_workbook(self, resp):
+        from openpyxl import load_workbook
+        return load_workbook(BytesIO(resp.content))
+
+    def test_fluxo_export_excel_todos_inclui_todo_o_historico(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro_export_excel"),
+            {"mes": "", "ano": ""},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("todos", resp["Content-Disposition"])
+
+        wb = self._load_workbook(resp)
+        numeros = {row[1] for row in wb["Movimentações"].iter_rows(min_row=2, values_only=True)}
+        self.assertIn("td-old", numeros)
+        self.assertIn("td-new", numeros)
+
+    def test_fluxo_export_excel_mes_atual_exclui_historico_antigo(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro_export_excel"),
+            {"mes": self.today.month, "ano": self.today.year},
+        )
+        self.assertEqual(resp.status_code, 200)
+        wb = self._load_workbook(resp)
+        numeros = {row[1] for row in wb["Movimentações"].iter_rows(min_row=2, values_only=True)}
+        self.assertNotIn("td-old", numeros)
+        self.assertIn("td-new", numeros)
+
+    def test_fluxo_export_excel_mes_atual_com_cliente_tem_saldo_anterior(self):
+        resp = self.client.get(
+            reverse("relatorios:fluxo_financeiro_export_excel"),
+            {"mes": self.today.month, "ano": self.today.year, "cliente_id": self.c.id},
+        )
+        self.assertEqual(resp.status_code, 200)
+        wb = self._load_workbook(resp)
+
+        rotulos_resumo = {row[0] for row in wb["Resumo"].iter_rows(min_row=4, values_only=True)}
+        self.assertIn("Saldo anterior (R$)", rotulos_resumo)
+        self.assertIn("Saldo final (R$)", rotulos_resumo)
+
+        primeira_linha = next(wb["Movimentações"].iter_rows(min_row=2, values_only=True))
+        self.assertEqual(primeira_linha[2], "SALDO ANTERIOR")
+        self.assertEqual(Decimal(str(primeira_linha[6])), Decimal("-10"))  # venda 10 no ano passado
+
+    def test_ficha_romaneios_export_excel_todos(self):
+        resp = self.client.get(
+            reverse("relatorios:ficha_romaneios_export_excel"),
+            {"mes": "", "ano": ""},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("todos", resp["Content-Disposition"])
+
+        wb = self._load_workbook(resp)
+        ws = wb.active
+        numeros = {row[1] for row in ws.iter_rows(min_row=5, values_only=True)}
+        self.assertIn("td-old", numeros)
+        self.assertIn("td-new", numeros)
+
+    def test_ficha_romaneios_export_csv_todos(self):
+        resp = self.client.get(
+            reverse("relatorios:ficha_romaneios_export"),
+            {"mes": "", "ano": ""},
+        )
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode("utf-8")
+        self.assertIn("td-old", content)
+        self.assertIn("td-new", content)
+
+    def test_ficha_madeiras_export_excel_todos(self):
+        resp = self.client.get(
+            reverse("relatorios:ficha_madeiras_export_excel"),
+            {"mes": "", "ano": ""},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("todos", resp["Content-Disposition"])
+
+        wb = self._load_workbook(resp)
+        ws = wb.active
+        numeros = {row[1] for row in ws.iter_rows(min_row=5, values_only=True)}
+        self.assertIn("td-old", numeros)
+        self.assertIn("td-new", numeros)
+
+    def test_telas_nao_geram_links_com_mes_none(self):
+        # Regressão do bug original: link de export renderizava ?mes=None&ano=None
+        for url_name in ("fluxo_financeiro", "ficha_romaneios", "ficha_madeiras"):
+            resp = self.client.get(reverse(f"relatorios:{url_name}"), {"mes": "", "ano": ""})
+            self.assertEqual(resp.status_code, 200, url_name)
+            self.assertNotContains(resp, "mes=None", msg_prefix=url_name)
+            self.assertNotContains(resp, "ano=None", msg_prefix=url_name)
+
+    def test_telas_com_todos_mostram_todo_o_historico(self):
+        resp = self.client.get(reverse("relatorios:ficha_romaneios"), {"mes": "", "ano": ""})
+        numeros = {r.numero_romaneio for r in resp.context["romaneios"]}
+        self.assertEqual(numeros, {"td-old", "td-new"})
+
+        resp = self.client.get(reverse("relatorios:ficha_madeiras"), {"mes": "", "ano": ""})
+        self.assertEqual(len(list(resp.context["rows"])), 2)
+
+    def test_primeira_visita_continua_no_mes_atual(self):
+        for url_name in ("fluxo_financeiro", "ficha_romaneios", "ficha_madeiras", "dashboard"):
+            resp = self.client.get(reverse(f"relatorios:{url_name}"))
+            self.assertEqual(resp.status_code, 200, url_name)
+            self.assertEqual(resp.context["mes"], self.today.month, url_name)
+            self.assertEqual(resp.context["ano"], self.today.year, url_name)
+
+
+class SaldoClientesExportTests(TestCase):
+    def setUp(self):
+        self.user = create_user(username="rel_saldo_exp", password="12345678")
+        self.client.login(username="rel_saldo_exp", password="12345678")
+
+        self.tm = create_tipo_madeira(nome="MADEIRA SC", preco_normal=Decimal("10.00"), preco_com_frete=Decimal("20.00"))
+
+        # devedor: -20
+        self.c_neg = create_cliente(nome="Devedor Export", telefone="911")
+        rom = create_romaneio(numero_romaneio="sc-1", cliente=self.c_neg)
+        create_item_romaneio(romaneio=rom, tipo_madeira=self.tm, valor_unitario=Decimal("10.00"), quantidade_m3_total=Decimal("2.000"))
+
+        # crédito: +30
+        self.c_pos = create_cliente(nome="Credor Export", telefone="922")
+        create_pagamento(cliente=self.c_pos, valor=Decimal("30.00"))
+
+    def test_export_excel_respeita_tipo_saldo(self):
+        from openpyxl import load_workbook
+
+        resp = self.client.get(
+            reverse("relatorios:saldo_clientes_export_excel"),
+            {"tipo_saldo": "negativos"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.content[:2] == b"PK")
+        self.assertIn("negativos", resp["Content-Disposition"])
+
+        ws = load_workbook(BytesIO(resp.content)).active
+        conteudo = [v for row in ws.iter_rows(values_only=True) for v in row if v is not None]
+        self.assertIn("Devedor Export", conteudo)
+        self.assertNotIn("Credor Export", conteudo)
+
+    def test_export_excel_respeita_busca(self):
+        from openpyxl import load_workbook
+
+        resp = self.client.get(
+            reverse("relatorios:saldo_clientes_export_excel"),
+            {"q": "922"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        ws = load_workbook(BytesIO(resp.content)).active
+        conteudo = [v for row in ws.iter_rows(values_only=True) for v in row if v is not None]
+        self.assertIn("Credor Export", conteudo)
+        self.assertNotIn("Devedor Export", conteudo)
+
+    def test_export_pdf_responde(self):
+        resp = self.client.get(reverse("relatorios:saldo_clientes_export_pdf"))
+        # 200 com WeasyPrint disponível; 500 gracioso sem as libs nativas
+        self.assertIn(resp.status_code, (200, 500))
+        if resp.status_code == 200:
+            self.assertEqual(resp["Content-Type"], "application/pdf")
 

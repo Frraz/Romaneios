@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Ficha de Romaneios {{ mes }}/{{ ano|unlocalize }}</title>
+  <title>Ficha de Romaneios {{ periodo_label }}</title>
   <style>
     @page {
       size: A4;
@@ -29,7 +29,7 @@
 </head>
 <body>
   <div class="header">
-    <p class="title">Ficha de Romaneios — {{ mes|stringformat:"02d" }}/{{ ano|unlocalize }}</p>
+    <p class="title">Ficha de Romaneios — {{ periodo_label }}</p>
     <div class="sub">
       Cliente: <b>{{ cliente_nome }}</b> &nbsp;|&nbsp;
       Romaneiador: <b>{{ romaneiador_nome }}</b> &nbsp;|&nbsp;

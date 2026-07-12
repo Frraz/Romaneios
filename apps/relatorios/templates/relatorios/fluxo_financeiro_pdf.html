@@ -178,7 +178,7 @@
           <div class="v pagamentos">R$ {{ pagamentos_total|floatformat:2 }}</div>
         </td>
         <td style="width:33.33%;">
-          <div class="k">Saldo (Pagamentos − Vendas)</div>
+          <div class="k">Saldo do período (Pagamentos − Vendas)</div>
           {% if saldo > 0 %}
             <div class="v saldo-pos">R$ {{ saldo|floatformat:2 }}</div>
           {% elif saldo < 0 %}
@@ -188,6 +188,32 @@
           {% endif %}
         </td>
       </tr>
+
+      {% if saldo_anterior is not None %}
+        <tr>
+          <td style="width:33.33%;">
+            <div class="k">Saldo anterior (antes do período)</div>
+            {% if saldo_anterior > 0 %}
+              <div class="v saldo-pos">R$ {{ saldo_anterior|floatformat:2 }}</div>
+            {% elif saldo_anterior < 0 %}
+              <div class="v saldo-neg">R$ {{ saldo_anterior|floatformat:2 }}</div>
+            {% else %}
+              <div class="v saldo-zero">R$ {{ saldo_anterior|floatformat:2 }}</div>
+            {% endif %}
+          </td>
+          <td style="width:33.33%;">
+            <div class="k">Saldo final do cliente</div>
+            {% if saldo_final > 0 %}
+              <div class="v saldo-pos">R$ {{ saldo_final|floatformat:2 }}</div>
+            {% elif saldo_final < 0 %}
+              <div class="v saldo-neg">R$ {{ saldo_final|floatformat:2 }}</div>
+            {% else %}
+              <div class="v saldo-zero">R$ {{ saldo_final|floatformat:2 }}</div>
+            {% endif %}
+          </td>
+          <td style="width:33.33%;"></td>
+        </tr>
+      {% endif %}
     </table>
   </div>
 
@@ -205,6 +231,25 @@
     </thead>
 
     <tbody>
+      {% if saldo_anterior is not None %}
+        <tr>
+          <td class="muted">—</td>
+          <td class="center muted">—</td>
+          <td><b>Saldo anterior (antes do período)</b></td>
+          <td class="num muted">—</td>
+          <td class="num muted">—</td>
+          <td class="num muted">—</td>
+          <td class="num">
+            {% if saldo_anterior < 0 %}
+              <span class="saldo-neg">- R$ {{ saldo_anterior|floatformat:2|cut:"-" }}</span>
+            {% elif saldo_anterior > 0 %}
+              <span class="saldo-pos">R$ {{ saldo_anterior|floatformat:2 }}</span>
+            {% else %}
+              <span class="saldo-zero">R$ {{ saldo_anterior|floatformat:2 }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
       {% for m in movimentacoes %}
         <tr>
           <td>{{ m.data|date:"d/m/Y" }}</td>
@@ -264,6 +309,9 @@
   </table>
 
   <div class="footer-note">
+    {% if saldo_parcial %}
+      Com filtro de Nº Romaneio ou Tipo de madeira, o saldo por linha considera apenas as movimentações exibidas.<br>
+    {% endif %}
     Documento gerado automaticamente pelo sistema MadereiraJD.
   </div>
 </body>

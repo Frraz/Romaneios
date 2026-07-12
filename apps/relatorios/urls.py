@@ -41,4 +41,6 @@ urlpatterns = [
     # Saldo de Clientes
     # =========================
     path("saldo-clientes/", views.RelatorioSaldoClientesView.as_view(), name="saldo_clientes"),
+    path("saldo-clientes/export/excel/", views.saldo_clientes_export_excel, name="saldo_clientes_export_excel"),
+    path("saldo-clientes/export/pdf/", views.saldo_clientes_export_pdf, name="saldo_clientes_export_pdf"),
 ]

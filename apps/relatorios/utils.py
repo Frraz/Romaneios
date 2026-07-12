@@ -1,86 +1,93 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import datetime
 import re
+
 from django.utils import timezone
 
 
-@dataclass(frozen=True)
-class PeriodoFiltro:
-    mes: int
-    ano: int
-    cliente_id: str | None = None
-
-
-def parse_mes_ano(request, default_to_now: bool = True) -> tuple[int, int]:
+def parse_mes_ano(request, *, allow_todos: bool = True) -> tuple[int | None, int | None]:
     """
-    Obtém mês e ano do request.GET com fallback seguro.
-    Usa timezone.localdate() (padrão recomendado no Django).
+    Lê mes/ano do request.GET com a convenção compartilhada pelos relatórios:
+
+      - parâmetro ausente (primeira visita)  → mês/ano atual
+      - parâmetro == "" ("Todos")            → None (sem restrição), se allow_todos
+      - inválido ou fora de faixa            → mês/ano atual
+
+    Retorna (mes, ano), cada um int ou None.
     """
-    now = timezone.localdate()
-    default_mes = now.month if default_to_now else 1
-    default_ano = now.year if default_to_now else now.year
+    hoje = timezone.localdate()
 
-    try:
-        mes = int(request.GET.get("mes", default_mes))
-    except (TypeError, ValueError):
-        mes = default_mes
+    def _parse(raw: str | None, default: int, minimo: int, maximo: int) -> int | None:
+        if raw is None:
+            return default
+        if raw == "":
+            return None if allow_todos else default
+        try:
+            valor = int(raw)
+        except (TypeError, ValueError):
+            return default
+        if valor < minimo or valor > maximo:
+            return default
+        return valor
 
-    try:
-        ano = int(request.GET.get("ano", default_ano))
-    except (TypeError, ValueError):
-        ano = default_ano
-
-    # clamp simples
-    if mes < 1 or mes > 12:
-        mes = default_mes
-    if ano < 1900 or ano > 2500:
-        ano = default_ano
-
+    mes = _parse(request.GET.get("mes"), hoje.month, 1, 12)
+    ano = _parse(request.GET.get("ano"), hoje.year, 1900, 2500)
     return mes, ano
 
 
-def get_periodo_filtro(request) -> PeriodoFiltro:
-    """Retorna um objeto com mes/ano/cliente_id (cliente é opcional)."""
-    mes, ano = parse_mes_ano(request, default_to_now=True)
-    cliente_id = request.GET.get("cliente") or None
-    return PeriodoFiltro(mes=mes, ano=ano, cliente_id=cliente_id)
-
-
-def apply_mes_ano_filter(qs, date_field: str, mes: int, ano: int):
+def apply_periodo(qs, date_field: str, mes: int | None, ano: int | None):
     """
-    Aplica filtro month/year para um campo de data.
-    Ex: apply_mes_ano_filter(Romaneio.objects.all(), "data_romaneio", mes, ano)
+    Aplica filtro de período a um queryset. None significa "Todos" (sem restrição).
+    Ex.: apply_periodo(Romaneio.objects.all(), "data_romaneio", mes, ano)
     """
-    return qs.filter(**{f"{date_field}__month": mes, f"{date_field}__year": ano})
+    if mes:
+        qs = qs.filter(**{f"{date_field}__month": mes})
+    if ano:
+        qs = qs.filter(**{f"{date_field}__year": ano})
+    return qs
 
 
-def csv_header_romaneios_por_item(writer, delimiter: str = ";"):
+def inicio_periodo(mes: int | None, ano: int | None) -> datetime.date | None:
     """
-    Header CSV para export de ROMANEIOS POR ITEM (alinhado com sua view atual).
+    Data de início do período filtrado, para cálculo de saldo anterior.
+
+    Sem ano definido não há período contíguo (ex.: "mês 07 de todos os anos"),
+    então não existe um "antes" bem definido → retorna None.
     """
-    writer.writerow([
-        "Modalidade",
-        "Tipo Romaneio",
-        "Nº Romaneio",
-        "Data",
-        "Cliente",
-        "Motorista",
-        "Espécie",
-        "Qtd Item (m³)",
-        "Valor Unit. (R$/m³)",
-        "Total Item (R$)",
-    ])
+    if ano is None:
+        return None
+    return datetime.date(ano, mes or 1, 1)
 
 
-def soma_total_m3_itens(itens) -> float:
-    """Soma quantidade_m3_total (por item)."""
-    return sum(float(getattr(item, "quantidade_m3_total", 0) or 0) for item in itens)
+def periodo_label(mes: int | None, ano: int | None) -> str:
+    """Rótulo humano do período para títulos de tela/PDF/Excel."""
+    if mes and ano:
+        return f"{mes:02d}/{ano}"
+    if mes:
+        return f"Mês {mes:02d} / Todos os anos"
+    if ano:
+        return f"Todos os meses / {ano}"
+    return "Todos os períodos"
 
 
-def soma_total_valor_itens(itens) -> float:
-    """Soma valor_total (por item)."""
-    return sum(float(getattr(item, "valor_total", 0) or 0) for item in itens)
+def periodo_slug(mes: int | None, ano: int | None) -> str:
+    """Versão segura do período para nomes de arquivo/abas."""
+    if mes and ano:
+        return f"{mes:02d}_{ano}"
+    if mes:
+        return f"mes{mes:02d}"
+    if ano:
+        return f"ano{ano}"
+    return "todos"
+
+
+def get_cliente_id(request) -> str:
+    """
+    Lê o filtro de cliente aceitando tanto "cliente_id" (fluxo financeiro)
+    quanto "cliente" (fichas), para links/bookmarks antigos continuarem válidos.
+    """
+    return (request.GET.get("cliente_id") or request.GET.get("cliente") or "").strip()
 
 
 def safe_filename(value: str, default: str = "arquivo") -> str:

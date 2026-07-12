@@ -7,6 +7,8 @@ from django.views.generic import TemplateView
 from apps.cadastros.models import Cliente
 from apps.romaneio.models import ItemRomaneio, Romaneio
 
+from .utils import parse_mes_ano
+
 from .views_ficha_romaneio import (
     RelatorioRomaneiosView,
     ficha_romaneios_export,
@@ -14,7 +16,6 @@ from .views_ficha_romaneio import (
     ficha_romaneios_export_pdf,
     romaneio_export_excel,
     romaneio_export_pdf,
-    get_mes_ano,
 )
 
 from .views_ficha_madeira import (
@@ -31,6 +32,8 @@ from .views_fluxo_financeiro import (
 
 from .views_saldo_cliente import (
     RelatorioSaldoClientesView,
+    saldo_clientes_export_excel,
+    saldo_clientes_export_pdf,
 )
 
 
@@ -39,7 +42,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        mes, ano = get_mes_ano(self.request)
+        # Dashboard é sempre de um mês específico — sem opção "Todos"
+        mes, ano = parse_mes_ano(self.request, allow_todos=False)
 
         romaneios_mes = Romaneio.objects.filter(
             data_romaneio__month=mes,

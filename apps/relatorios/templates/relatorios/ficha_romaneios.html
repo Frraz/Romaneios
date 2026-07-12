@@ -10,23 +10,20 @@
         <i class="fas fa-file-invoice"></i> Ficha de Romaneios
       </div>
 
-      <!-- Export do período (preserva filtros) -->
+      <!-- Export do período: repassa a querystring atual — exporta exatamente o filtro da tela -->
       <div class="d-flex gap-2 flex-wrap">
-        {% with mes_q=request.GET.mes|default:mes ano_q=request.GET.ano|default:ano|unlocalize cliente_q=request.GET.cliente romaneiador_q=request.GET.romaneiador numero_q=request.GET.numero_romaneio madeira_id_q=request.GET.tipo_madeira_id sort_q=request.GET.sort dir_q=request.GET.dir %}
-          <a class="btn btn-outline-success btn-sm"
-             href="{% url 'relatorios:ficha_romaneios_export_excel' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if romaneiador_q %}&romaneiador={{ romaneiador_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
-             title="Exportar romaneios do período em Excel (.xlsx)">
-            <i class="fas fa-file-excel"></i> Excel
-          </a>
+        <a class="btn btn-outline-success btn-sm"
+           href="{% url 'relatorios:ficha_romaneios_export_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar romaneios do período em Excel (.xlsx)">
+          <i class="fas fa-file-excel"></i> Excel
+        </a>
 
-          <a class="btn btn-outline-danger btn-sm"
-             href="{% url 'relatorios:ficha_romaneios_export_pdf' %}?mes={{ mes_q }}&ano={{ ano_q }}{% if cliente_q %}&cliente={{ cliente_q }}{% endif %}{% if romaneiador_q %}&romaneiador={{ romaneiador_q }}{% endif %}{% if numero_q %}&numero_romaneio={{ numero_q }}{% endif %}{% if madeira_id_q %}&tipo_madeira_id={{ madeira_id_q }}{% endif %}{% if sort_q %}&sort={{ sort_q }}{% endif %}{% if dir_q %}&dir={{ dir_q }}{% endif %}"
-             title="Exportar romaneios do período em PDF"
-             target="_blank">
-            <i class="fas fa-file-pdf"></i> PDF
-          </a>
-
-        {% endwith %}
+        <a class="btn btn-outline-danger btn-sm"
+           href="{% url 'relatorios:ficha_romaneios_export_pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar romaneios do período em PDF"
+           target="_blank">
+          <i class="fas fa-file-pdf"></i> PDF
+        </a>
       </div>
     </div>
 
@@ -36,9 +33,10 @@
         <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Mês</label>
           <select name="mes" class="form-select">
+            <option value="" {% if request.GET.mes == "" %}selected{% endif %}>Todos</option>
             {% for m in meses %}
               <option value="{{ m|stringformat:'d' }}"
-                      {% if m|stringformat:'d' == request.GET.mes|default:mes|stringformat:'s' %}selected{% endif %}>
+                      {% if mes and m == mes %}selected{% endif %}>
                 {{ m|stringformat:"02d" }}
               </option>
             {% endfor %}
@@ -48,9 +46,10 @@
         <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label">Ano</label>
           <select name="ano" class="form-select">
+            <option value="" {% if request.GET.ano == "" %}selected{% endif %}>Todos</option>
             {% for a in anos %}
               <option value="{{ a|stringformat:'d' }}"
-                      {% if a|stringformat:'d' == request.GET.ano|default:ano|stringformat:'s' %}selected{% endif %}>
+                      {% if ano and a == ano %}selected{% endif %}>
                 {{ a|stringformat:'d' }}
               </option>
             {% endfor %}
@@ -133,6 +132,14 @@
           <i class="fas fa-dollar-sign"></i> Total Valor: R$ {{ total_valor_periodo|floatformat:2 }}
         </span>
         <span class="text-muted ms-2">({{ romaneios|length }} romaneios)</span>
+        <span class="text-muted ms-2 small">
+          Período:
+          <b>
+            {% if mes %}{{ mes|stringformat:"02d" }}{% else %}Todos os meses{% endif %}
+            /
+            {% if ano %}{{ ano|unlocalize }}{% else %}Todos os anos{% endif %}
+          </b>
+        </span>
       </div>
 
       {% with sort=request.GET.sort|default:"data" dir=request.GET.dir|default:"asc" %}
@@ -142,7 +149,7 @@
               <tr>
                 <th>
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=cliente&dir={% if sort == 'cliente' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?{% if base_qs %}{{ base_qs }}&{% endif %}sort=cliente&dir={% if sort == 'cliente' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Cliente
                     {% if sort == "cliente" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -150,7 +157,7 @@
 
                 <th style="width: 140px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=numero&dir={% if sort == 'numero' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?{% if base_qs %}{{ base_qs }}&{% endif %}sort=numero&dir={% if sort == 'numero' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Nº Romaneio
                     {% if sort == "numero" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -158,7 +165,7 @@
 
                 <th style="width: 140px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=data&dir={% if sort == 'data' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?{% if base_qs %}{{ base_qs }}&{% endif %}sort=data&dir={% if sort == 'data' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Data
                     {% if sort == "data" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -168,7 +175,7 @@
 
                 <th class="text-end" style="width: 120px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=m3&dir={% if sort == 'm3' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?{% if base_qs %}{{ base_qs }}&{% endif %}sort=m3&dir={% if sort == 'm3' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     M³
                     {% if sort == "m3" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>
@@ -176,7 +183,7 @@
 
                 <th class="text-end" style="width: 150px;">
                   <a class="text-decoration-none"
-                     href="?mes={{ request.GET.mes|default:mes }}&ano={{ request.GET.ano|default:ano|unlocalize }}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.numero_romaneio %}&numero_romaneio={{ request.GET.numero_romaneio }}{% endif %}{% if request.GET.tipo_madeira_id %}&tipo_madeira_id={{ request.GET.tipo_madeira_id }}{% endif %}&sort=total&dir={% if sort == 'total' and dir == 'asc' %}desc{% else %}asc{% endif %}">
+                     href="?{% if base_qs %}{{ base_qs }}&{% endif %}sort=total&dir={% if sort == 'total' and dir == 'asc' %}desc{% else %}asc{% endif %}">
                     Total R$
                     {% if sort == "total" %}{% if dir == "asc" %}▲{% else %}▼{% endif %}{% endif %}
                   </a>

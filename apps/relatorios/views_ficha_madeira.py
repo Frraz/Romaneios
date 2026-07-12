@@ -11,7 +11,14 @@ from django.views.generic import TemplateView
 from apps.cadastros.models import Cliente, TipoMadeira
 from apps.romaneio.models import ItemRomaneio, Romaneio
 
-from .views_ficha_romaneio import get_mes_ano, _safe_filename  # reutiliza helpers
+from .utils import (
+    apply_periodo,
+    get_cliente_id,
+    parse_mes_ano,
+    periodo_label,
+    periodo_slug,
+    safe_filename,
+)
 
 
 def _madeiras_queryset(request):
@@ -29,9 +36,9 @@ def _madeiras_queryset(request):
       - sort: data|numero|madeira|tipo|valor_unit|m3|total
       - dir: asc|desc
     """
-    mes, ano = get_mes_ano(request)
+    mes, ano = parse_mes_ano(request)
 
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     numero_romaneio = (request.GET.get("numero_romaneio") or "").strip()
     tipo_romaneio = (request.GET.get("tipo_romaneio") or "").strip().upper()
     tipo_madeira_id = (request.GET.get("tipo_madeira_id") or "").strip()
@@ -40,13 +47,8 @@ def _madeiras_queryset(request):
     direction = (request.GET.get("dir") or "asc").strip().lower()
     desc = direction == "desc"
 
-    qs = (
-        ItemRomaneio.objects.filter(
-            romaneio__data_romaneio__month=mes,
-            romaneio__data_romaneio__year=ano,
-        )
-        .select_related("romaneio", "romaneio__cliente", "tipo_madeira")
-    )
+    qs = ItemRomaneio.objects.select_related("romaneio", "romaneio__cliente", "tipo_madeira")
+    qs = apply_periodo(qs, "romaneio__data_romaneio", mes, ano)
 
     # ===== filtros =====
     if cliente_id:
@@ -91,15 +93,21 @@ class RelatorioMadeirasView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        mes, ano = get_mes_ano(self.request)
+        mes, ano = parse_mes_ano(self.request)
         qs = _madeiras_queryset(self.request)
 
-        cliente_id = (self.request.GET.get("cliente") or self.request.GET.get("cliente_id") or "").strip()
+        cliente_id = get_cliente_id(self.request)
 
         totais = qs.aggregate(
             total_m3=Sum("quantidade_m3_total"),
             total_itens=Sum("valor_total"),
         )
+
+        # Querystring atual sem sort/dir/page — base para links de ordenação
+        # (preserva mes/ano inclusive quando vazios = "Todos")
+        base_params = self.request.GET.copy()
+        for k in ("sort", "dir", "page"):
+            base_params.pop(k, None)
 
         context.update({
             "rows": qs,
@@ -114,6 +122,7 @@ class RelatorioMadeirasView(LoginRequiredMixin, TemplateView):
             "total_itens": totais["total_itens"] or 0,
             "sort": (self.request.GET.get("sort") or "data"),
             "dir": (self.request.GET.get("dir") or "asc"),
+            "base_qs": base_params.urlencode(),
         })
         return context
 
@@ -127,10 +136,10 @@ def ficha_madeiras_export_excel(request):
     from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 
-    mes, ano = get_mes_ano(request)
+    mes, ano = parse_mes_ano(request)
     qs = _madeiras_queryset(request)
 
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     cliente_nome = "Todos"
     if cliente_id:
         c = Cliente.objects.filter(pk=cliente_id).first()
@@ -161,10 +170,10 @@ def ficha_madeiras_export_excel(request):
 
     wb = Workbook()
     ws = wb.active
-    ws.title = f"Madeiras {mes:02d}-{ano}"
+    ws.title = f"Madeiras {periodo_slug(mes, ano)}"
 
     ws.merge_cells("A1:G1")
-    ws["A1"] = f"FICHA DE MADEIRAS — {mes:02d}/{ano}"
+    ws["A1"] = f"FICHA DE MADEIRAS — {periodo_label(mes, ano)}"
     ws["A1"].font = title_font
     ws["A1"].fill = brand_fill
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -237,7 +246,7 @@ def ficha_madeiras_export_excel(request):
     wb.save(output)
     output.seek(0)
 
-    filename = _safe_filename(f"ficha_madeiras_{mes:02d}_{ano}.xlsx")
+    filename = safe_filename(f"ficha_madeiras_{periodo_slug(mes, ano)}.xlsx")
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -249,10 +258,10 @@ def ficha_madeiras_export_excel(request):
 @login_required
 def ficha_madeiras_export_pdf(request):
     """Exporta a Ficha de Madeiras (ItemRomaneio) para PDF via WeasyPrint, respeitando filtros/ordenação."""
-    mes, ano = get_mes_ano(request)
+    mes, ano = parse_mes_ano(request)
     qs = _madeiras_queryset(request)
 
-    cliente_id = (request.GET.get("cliente") or request.GET.get("cliente_id") or "").strip()
+    cliente_id = get_cliente_id(request)
     cliente_nome = "Todos"
     if cliente_id:
         c = Cliente.objects.filter(pk=cliente_id).first()
@@ -270,6 +279,7 @@ def ficha_madeiras_export_pdf(request):
         "rows": list(qs),
         "mes": mes,
         "ano": ano,
+        "periodo_label": periodo_label(mes, ano),
         "cliente_nome": cliente_nome,
         "tipo_madeira_nome": tipo_madeira_nome,
         "total_m3": qs.aggregate(s=Sum("quantidade_m3_total"))["s"] or 0,
@@ -290,7 +300,7 @@ def ficha_madeiras_export_pdf(request):
             content_type="text/plain; charset=utf-8",
         )
 
-    filename = _safe_filename(f"ficha_madeiras_{mes:02d}_{ano}.pdf")
+    filename = safe_filename(f"ficha_madeiras_{periodo_slug(mes, ano)}.pdf")
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response

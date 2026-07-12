@@ -8,6 +8,22 @@
       <div class="fw-bold">
         <i class="fas fa-balance-scale"></i> Saldo de Clientes
       </div>
+
+      {# Export: repassa a querystring atual — exporta exatamente o filtro da tela #}
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-success btn-sm"
+           href="{% url 'relatorios:saldo_clientes_export_excel' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar saldo de clientes em Excel (.xlsx)">
+          <i class="fas fa-file-excel"></i> Excel
+        </a>
+
+        <a class="btn btn-outline-danger btn-sm"
+           href="{% url 'relatorios:saldo_clientes_export_pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+           title="Exportar saldo de clientes em PDF"
+           target="_blank">
+          <i class="fas fa-file-pdf"></i> PDF
+        </a>
+      </div>
     </div>
 
     <div class="card-body">
