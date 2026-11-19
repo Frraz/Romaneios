@@ -24,6 +24,7 @@ Pipfile.lock
 # -------------------------------------------------
 .env
 .env.*
+!.env.example
 *.secret
 secret_*.json
 settings_local.py

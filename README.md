@@ -1,263 +1,125 @@
-# Sistema de Romaneio de Madeiras (MadeireiraJD)
+# Romaneios
 
-Sistema web em **Django** para gestão de vendas (romaneios) de madeira, controle de clientes, saldos, recebimentos e relatórios.  
-O objetivo é substituir planilhas por uma solução **centralizada, rastreável e segura**.
+Sistema web da Madeireira JD para registrar vendas de madeira (romaneios), pagamentos de clientes e saldos, com relatórios em tela, Excel e PDF.
 
----
+[Arquitetura](docs/arquitetura.md) · [Regras de negócio](docs/regras-de-negocio.md) · [Operação](docs/operacao.md) · [Roteiro](ROADMAP.md)
 
-## Visão geral
+## O que faz
 
-### Principais recursos
-- Cadastro e gestão de **Clientes**, **Motoristas**, **Tipos de Madeira** e **Usuários (operadores)**
-- Registro de **Romaneios (vendas)** com cálculo automático de totais
-- Registro de **Pagamentos/Adiantamentos** vinculados ao cliente
-- **Saldo automático por cliente** (devedor, zerado ou com crédito)
-- **Dashboard** com indicadores do mês
-- **Relatórios** com filtros (mês/ano/cliente/tipo de madeira)
-- Autenticação com **login/logout** e **recuperação de senha por e-mail**
+- **Cadastros** de clientes (CPF/CNPJ opcional e validado), tipos de madeira com preço normal e preço com frete, motoristas, romaneiadores e operadores.
+- **Romaneios** com uma ou mais madeiras, em duas modalidades:
+  - *Simples*: o operador informa o m³ de cada madeira.
+  - *Detalhado*: o operador registra cada tora (comprimento, rôdo e descontos), e o m³ é calculado e somado.
 
----
+  O preço vem do tipo de madeira conforme o romaneio seja normal ou com frete; os totais (m³, valor bruto e valor líquido) são calculados pelo sistema.
+- **Pagamentos** de clientes (dinheiro, PIX, transferência, cheque, depósito, outros).
+- **Saldo do cliente** sempre calculado a partir das vendas e dos pagamentos, sem ajuste manual: negativo quando o cliente deve, positivo quando tem crédito.
+- **Dashboard** do mês: m³ vendidos, faturamento, número de romaneios, total a receber, maiores devedores e maiores compradores.
+- **Relatórios** com filtro por período e exportação em Excel e PDF: Ficha de Romaneios, Ficha de Madeiras, Fluxo Financeiro (com saldo corrido por cliente) e Saldo de Clientes. Cada romaneio também sai em PDF para impressão.
+- **Acesso** por login com usuário ou e-mail e recuperação de senha por e-mail.
 
-## Regras de negócio (resumo)
-
-- **Venda (romaneio)** aumenta o valor devido pelo cliente
-- **Pagamento** reduz o valor devido
-- **Saldo do cliente**:
-  - **Negativo** → cliente está devendo
-  - **Zero** → quitado
-  - **Positivo** → cliente com crédito
-
-> O saldo é **calculado automaticamente** com base no histórico (vendas e pagamentos).  
-> Não existe ajuste manual de saldo para garantir rastreabilidade.
-
----
-
-## Módulos do sistema
-
-### 1) Dashboard
-Resumo mensal com indicadores como:
-- Total vendido (m³)
-- Faturamento total
-- Saldo a receber
-- Quantidade de romaneios no mês
-
-### 2) Cadastros
-CRUD de:
-- Clientes
-- Tipos de madeira
-- Motoristas
-- Usuários (operadores)
-
-### 3) Romaneios (Vendas)
-Cadastro de romaneios com:
-- Data e número
-- Cliente e motorista
-- Tipo de romaneio (ex.: **normal** / **com frete**)
-- Modalidade (**simples** ou **detalhado**, quando aplicável)
-- Itens por tipo de madeira, com:
-  - quantidade (m³)
-  - preço unitário
-  - total calculado automaticamente
-
-### 4) Pagamentos (Adiantamentos)
-Registro de recebimentos por cliente com:
-- Data, cliente, valor, tipo e descrição
-- Impacto automático no saldo do cliente
-
-### 5) Relatórios
-- Ficha de Romaneios
-- Ficha por Tipo de Madeira
-- Fluxo Financeiro
-- Saldo de Clientes
-- Exportação (CSV/XLSX e PDF quando disponível)
-
----
-
-## Stack
-
-- **Python:** 3.10+ (recomendado 3.11+)
-- **Django:** 4.2+
-- **Banco:** PostgreSQL (produção)
-- Templates com **Bootstrap 5**
-- Views com **Class-Based Views (CBVs)**
-
----
-
-## Estrutura do projeto
-
-- `apps/cadastros/` — clientes, motoristas, tipos, usuários
-- `apps/romaneio/` — romaneios (vendas)
-- `apps/financeiro/` — pagamentos
-- `apps/relatorios/` — dashboard e relatórios (inclui exports)
-- `apps/core/` — utilitários e autenticação custom (ex.: password reset)
-- `templates/` — templates globais (base e auth)
-- `static/` — CSS e assets
-- `config/` — settings/urls/wsgi
-
----
-
-## Pré-requisitos
-
-- Python 3.10+
-- PostgreSQL (produção)
-- (Opcional) Docker
-- (Produção) Servidor SMTP e Nginx (ou proxy) com HTTPS
-
-> **Observação sobre PDF (WeasyPrint):** para exportação em PDF em Linux, podem ser necessárias bibliotecas do sistema (dependendo da distro). Em Windows, é comum precisar rodar via WSL para evitar problemas com dependências nativas.
-
----
-
-## Instalação (desenvolvimento)
-
-### 1) Clonar e criar ambiente virtual
-```sh
-git clone https://github.com/<owner>/<repo>.git
-cd <repo>
-
-python -m venv .venv
-# Linux/macOS:
-source .venv/bin/activate
-# Windows (PowerShell):
-# .venv\Scripts\Activate.ps1
+```mermaid
+flowchart LR
+    C[Cadastros] --> R[Romaneio<br/>venda]
+    C --> P[Pagamento]
+    R -->|valor líquido| S[Saldo do cliente]
+    P -->|valor pago| S
+    R --> REL[Relatórios e exportações]
+    P --> REL
+    S --> REL
 ```
 
-### 2) Instalar dependências
-```sh
+## Estado
+
+**2026-11-19:** em produção desde 2026-01-31, com deploy automático a cada push na `main`. Há débitos técnicos prioritários, entre eles a perda de alterações na edição de romaneios detalhados, a falta de backup automático e brechas de acesso. Detalhes no [roteiro](ROADMAP.md).
+
+## Tecnologias
+
+| Camada | Tecnologia | Versão |
+|---|---|---|
+| Linguagem | Python | 3.12 |
+| Framework | Django | 4.2.27 |
+| Banco de dados | PostgreSQL (driver `psycopg2-binary`) | 2.9.11 (driver) |
+| Servidor de aplicação | Gunicorn, atrás de Nginx (fora do `requirements.txt`) | — |
+| Interface | Bootstrap, Font Awesome, jQuery, Select2 (via CDN) | 5.3.0, 6.4.0, 3.7.0, 4.1.0-rc.0 |
+| Excel | openpyxl | 3.1.5 |
+| PDF | WeasyPrint | 62.3 |
+| Configuração | python-dotenv | 1.2.1 |
+
+Versões das bibliotecas Python em [`requirements.txt`](requirements.txt).
+
+## Início rápido
+
+Pré-requisitos: Python 3.12 e PostgreSQL. Para os PDFs, as bibliotecas nativas do WeasyPrint (lista em [desenvolvimento](docs/desenvolvimento.md#ambiente)).
+
+```bash
+git clone https://github.com/Frraz/Romaneios.git
+cd Romaneios
+python3.12 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 3) Configurar variáveis de ambiente
-Crie um arquivo `.env` na raiz do projeto (veja o exemplo abaixo).
-
-### 4) Migrar e criar usuário admin
-```sh
+cp .env.example .env            # ajuste DB_* e SECRET_KEY
 python manage.py migrate
 python manage.py createsuperuser
-```
-
-### 5) Executar
-```sh
 python manage.py runserver
 ```
 
-Acesse:
-- http://127.0.0.1:8000/
+A aplicação fica em `http://127.0.0.1:8000/`. Atenção: a porta padrão do banco no projeto é **5433**.
 
----
+Testes (usam SQLite em memória, sem PostgreSQL):
 
-## Configuração do `.env` (exemplo)
-
-Crie o arquivo `.env` na raiz do projeto:
-
-```env
-# Django
-SECRET_KEY=sua-chave-super-segura
-DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost
-
-# Banco (produção)
-DB_NAME=madereira_jd
-DB_USER=parica
-DB_PASSWORD=senha
-DB_HOST=localhost
-DB_PORT=5433
-DB_CONN_MAX_AGE=600
-
-# Links de recuperação de senha
-SITE_DOMAIN=127.0.0.1:8000
-SITE_PROTOCOL=http
-
-# Email
-# (Desenvolvimento: console backend; produção: SMTP)
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-DEFAULT_FROM_EMAIL=Romaneio de Madeiras <no-reply@localhost>
-```
-
-### Produção (lembretes)
-- `DEBUG=False`
-- `ALLOWED_HOSTS=seu-dominio.com.br,www.seu-dominio.com.br`
-- `CSRF_TRUSTED_ORIGINS=https://seu-dominio.com.br,https://www.seu-dominio.com.br`
-- `SITE_DOMAIN=seu-dominio.com.br`
-- `SITE_PROTOCOL=https`
-- Configure SMTP real (ex.: Gmail com **senha de app**)
-
----
-
-## Recuperação de senha por e-mail
-
-O sistema usa o fluxo padrão do Django com templates customizados em:
-
-- `templates/registration/password_reset_form.html`
-- `templates/registration/password_reset_done.html`
-- `templates/registration/password_reset_confirm.html`
-- `templates/registration/password_reset_complete.html`
-- `templates/registration/password_reset_email.html`
-- `templates/registration/password_reset_subject.txt`
-
-Requisito: o usuário precisa ter **e-mail cadastrado** no perfil.
-
----
-
-## Testes
-
-### Rodar testes
-```sh
-python manage.py test -v 2
-```
-
-### Settings de teste (recomendado)
-Se você tiver um settings dedicado para testes (ex.: `config.settings_test` usando SQLite), rode assim:
-
-```sh
-# Linux/macOS
+```bash
 DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test -v 2
-
-# Windows PowerShell
-$env:DJANGO_SETTINGS_MODULE="config.settings_test"
-python manage.py test -v 2
 ```
 
-> Para validar exportação PDF em CI/Linux, garanta que o ambiente tenha as dependências nativas do WeasyPrint instaladas.
+O estado atual da suíte está em [desenvolvimento](docs/desenvolvimento.md#estado-da-suíte).
 
----
+## Configuração
 
-## Deploy (produção) – checklist rápido
+Variáveis lidas do arquivo `.env` na raiz. A lista completa, com exemplos, está em [`.env.example`](.env.example).
 
-1. Ajustar `.env`:
-   - `DEBUG=False`
-   - `ALLOWED_HOSTS=...`
-   - `CSRF_TRUSTED_ORIGINS=...`
-   - `SITE_DOMAIN=...`
-   - `SITE_PROTOCOL=https`
-   - SMTP configurado
+| Variável | Para que serve | Exemplo |
+|---|---|---|
+| `SECRET_KEY` | Chave criptográfica do Django | cadeia longa e aleatória |
+| `DEBUG` | Modo de desenvolvimento. `False` em produção liga HTTPS obrigatório, cookies seguros e HSTS | `True` |
+| `ALLOWED_HOSTS` | Domínios aceitos | `app.exemplo.com.br` |
+| `CSRF_TRUSTED_ORIGINS` | Origens aceitas nos formulários (com `https://`) | `https://app.exemplo.com.br` |
+| `SITE_DOMAIN`, `SITE_PROTOCOL` | Montam o link do e-mail de redefinição de senha | `app.exemplo.com.br`, `https` |
+| `SECURE_PROXY_SSL_HEADER` | Cabeçalho do proxy que indica HTTPS | `HTTP_X_FORWARDED_PROTO,https` |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Conexão com o PostgreSQL | `romaneios`, `romaneios`, …, `localhost`, `5433` |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Envio de e-mail (SMTP) | `smtp.exemplo.com.br`, `587` |
+| `DEFAULT_FROM_EMAIL` | Remetente dos e-mails | `Romaneios <no-reply@exemplo.com.br>` |
 
-2. Coletar estáticos:
-```sh
-python manage.py collectstatic --noinput
-```
+## Estrutura
 
-3. Rodar check de segurança:
-```sh
-python manage.py check --deploy
-```
+| Pasta | Conteúdo |
+|---|---|
+| `apps/cadastros/` | Clientes, tipos de madeira, motoristas, romaneiadores, operadores |
+| `apps/romaneio/` | Romaneios, itens e unidades; cálculo dos totais |
+| `apps/financeiro/` | Pagamentos |
+| `apps/relatorios/` | Dashboard, relatórios e exportações |
+| `apps/core/` | Login por usuário ou e-mail e redefinição de senha |
+| `apps/tests/` | Fábricas e testes do projeto |
+| `config/` | Configurações (`settings.py`, `settings_test.py`), rotas e WSGI |
+| `templates/` | Layout base, login e redefinição de senha |
+| `static/` | Folha de estilos |
+| `media/` | Logo da tela de login |
+| `.github/workflows/` | Deploy automático |
+| `docs/` | Documentação |
 
-4. Proxy/HTTPS (Nginx/Traefik)
-Garanta headers e configurações de proxy conforme seu ambiente, por exemplo:
-- `X-Forwarded-Proto`
-- `X-Real-IP`
-- `X-Forwarded-For`
+## Documentação
 
----
-
-## Contribuição (padrões)
-
-- Use ORM e mantenha a separação por apps
-- Evite “saldo manual”: saldo sempre derivado de vendas e pagamentos
-- Relatórios novos: siga o padrão em `apps/relatorios/`
-- Novas features: escreva/atualize testes junto com a implementação
-
----
+| Se você quer… | Leia |
+|---|---|
+| Entender como o sistema é organizado | [Arquitetura](docs/arquitetura.md) |
+| Conhecer termos, fórmulas e validações | [Regras de negócio](docs/regras-de-negocio.md) |
+| Saber o que cada relatório mostra e exporta | [Relatórios](docs/relatorios.md) |
+| Desenvolver e rodar os testes | [Desenvolvimento](docs/desenvolvimento.md) |
+| Publicar, reverter e fazer backup | [Operação](docs/operacao.md) |
+| Ver o que falta e os defeitos conhecidos | [Roteiro](ROADMAP.md) |
+| Saber o que mudou | [Registro de mudanças](CHANGELOG.md) |
+| Ver o índice completo | [docs/](docs/README.md) |
 
 ## Licença
 
-Projeto livre para uso acadêmico e comercial. Se existir um arquivo `LICENSE`, ele define os termos oficiais.
+Código proprietário, sem licença de uso definida (a confirmar com o autor).

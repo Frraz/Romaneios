@@ -1,84 +1,78 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Instruções para trabalhar neste repositório. O que o sistema é e como funciona está em `docs/`; aqui fica só o que não dá para descobrir lendo o código.
 
-## Overview
+## Antes de tudo
 
-Django web app (MadeireiraJD) for managing timber sales ("romaneios"): clients, drivers, wood types, payments, client balances, and reports. UI is in Brazilian Portuguese; code, models, and DB fields use Portuguese names. Bootstrap 5 templates, Class-Based Views, PostgreSQL in production.
+- **O sistema está em produção.** Todo push na `main` publica na hora (`.github/workflows/deploy.yml`: `git pull`, `pip install`, `migrate`, `collectstatic`, restart do `gunicorn_romaneios`), inclusive commit só de documentação. Nunca faça commit nem push sem pedido explícito. Trabalhe fora da `main` quando possível.
+- O deploy não roda testes. Rode-os você antes de dizer que algo está pronto.
 
-## Commands
+## Comandos
 
-The repo ships a `venv/` — activate it first: `source venv/bin/activate`.
+Ambiente: Python **3.12** (o Django 4.2 não roda no 3.14 do sistema). O `venv/` local fica fora do Git.
 
-```sh
-# Run dev server (uses config.settings, reads .env)
-python manage.py runserver
+```bash
+source venv/bin/activate
+# se não existir: uv venv --python 3.12 venv && VIRTUAL_ENV=venv uv pip install -r requirements.txt
 
-# Migrations
-python manage.py makemigrations
-python manage.py migrate
-
-# Tests — ALWAYS use the test settings (SQLite in-memory, fast hashers, locmem email)
+# Testes: sempre com as settings de teste (SQLite em memória). Sem isso, tenta conectar no PostgreSQL.
 DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test -v 2
-
-# Run a single app / module / test
 DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test apps.romaneio
-DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test apps.romaneio.tests.test_romaneio_models
-DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test apps.romaneio.tests.test_romaneio_models.ClassName.test_method
+DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test apps.romaneio.tests.test_romaneio_models.RomaneioTotaisTests.test_item_delete_recalcula_totais_romaneio
 
-# Seed sample data
-python manage.py mock_dados
+# Verificações
+DJANGO_SETTINGS_MODULE=config.settings_test python manage.py check
+DJANGO_SETTINGS_MODULE=config.settings_test python manage.py makemigrations --check --dry-run
 
-# Production checks
-python manage.py collectstatic --noinput
-python manage.py check --deploy
+# Servidor local (precisa de PostgreSQL; porta padrão do projeto: 5433)
+python manage.py runserver
 ```
 
-Default `config.settings` connects to PostgreSQL (default port **5433**, not 5432). Without a database, only `config.settings_test` will run. Tests do not auto-load test settings — you must pass `DJANGO_SETTINGS_MODULE=config.settings_test` explicitly.
+Não há linter nem formatador configurados.
 
-## Architecture
+## Regras que não podem ser quebradas
 
-Five apps under `apps/`, each a standard Django app with its own `models.py`, `views.py`, `urls.py`, `forms.py`, `templates/`, and `tests/`:
+- Dinheiro e m³ em `Decimal`, quantizados com `VALOR_STEP`/`QTD_M3_STEP` e `ROUND_HALF_UP` (`apps/romaneio/models.py`). Nada de `float` em totais ou saldo.
+- `Romaneio.m3_total`, `valor_bruto`, `valor_total` e `ItemRomaneio.valor_total` são derivados. Nunca os atribua à mão.
+- Itens e unidades se salvam e excluem pelo `save()`/`delete()` de cada objeto. `update()`, `bulk_create()` e exclusão em massa pulam a cascata de totais.
+- O saldo do cliente nunca é gravado nem ajustado à mão: é `Cliente.saldo_atual` (pagamentos − `valor_total` dos romaneios).
+- Não altere nem reverta migrações já aplicadas. A `romaneio/0005` é migração de dados sem volta.
+- Nunca rode `mock_dados` contra o banco de produção.
+- Dados reais de ambiente (domínio, caminhos, usuário do banco) não entram em arquivo versionado. Use exemplos (`app.exemplo.com.br`, `/srv/romaneios`).
 
-- **cadastros** — master data: `Cliente`, `TipoMadeira`, `Motorista`, plus operator user management.
-- **romaneio** — the core sales document and its line items.
-- **financeiro** — `Pagamento` (payments/advances).
-- **relatorios** — dashboard + reports + exports; mounted at the site root (`/`).
-- **core** — custom auth backend, password-reset views, abstract `BaseModel`, `ConfiguracaoGeral` key/value config.
+## Armadilhas conhecidas
 
-URLs are namespaced (`relatorios:`, `cadastros:`, `romaneio:`, `financeiro:`, `core:`) and wired in [config/urls.py](config/urls.py). Auth (login/logout/password reset) lives at the project level under `/accounts/`.
+- A fórmula do m³ da unidade existe em dois lugares: `UnidadeRomaneio.calcular_m3_detalhado()` e `calcularM3Unidade()` em `apps/romaneio/templates/romaneio/romaneio_form.html`. Mude os dois juntos.
+- O POST de criar/editar romaneio sempre leva o management form de unidades por item (`unidades-<i>-TOTAL_FORMS`…), mesmo no SIMPLES. Veja os auxiliares em `apps/romaneio/tests/test_romaneio_views.py`.
+- Na edição de romaneio, as unidades são casadas com os itens pelo índice do retorno de `formset.save()`, que só traz itens alterados. Isso perde alterações (DT-01 no `ROADMAP.md`). Não copie esse padrão.
+- `DeleteView` do Django 4.2 não chama `delete()` no POST: mensagem ou lógica posta ali não roda. Use `form_valid()`.
+- `TipoMadeira` e `Cliente` são `PROTECT`. Exclusão de madeira em uso hoje estoura `ProtectedError` (DT-07). `ClienteDeleteView` mostra como tratar.
+- `StaffRequiredMixin` redireciona (302) para o dashboard com mensagem, não devolve 403.
+- Período nos relatórios: use `parse_mes_ano()` de `apps/relatorios/utils.py`. Parâmetro ausente = mês atual; vazio = "Todos" (`None`). A lista de pagamentos é a exceção: sem filtro mostra tudo.
+- Ordenar pelo nº do romaneio exige o `RawSQL` com `CASE` de `views_ficha_romaneio.py` (regex no PostgreSQL, `GLOB` no SQLite). `Cast` direto quebra com números como `3107.1`.
+- PDF: `weasyprint` é importado dentro da view. `reportlab` está no `requirements.txt` mas não é usado.
+- `apps/core/views.py` tem um dashboard antigo e público em `/core/`; o dashboard real é `apps/relatorios/views.py`. `BaseModel` e `ConfiguracaoGeral` não são usados.
+- `apps/relatorios/views.py` só reexporta: edite os módulos `views_*.py`.
+- A suíte tem falhas conhecidas (testes desatualizados) e testes ocultos por classe duplicada, listados em `docs/desenvolvimento.md`. Não esconda falhas novas atrás delas.
+- Item de menu novo entra duas vezes em `templates/base.html`: barra do desktop e menu offcanvas do celular.
 
-### Romaneio totals (the central money logic)
+## Definição de pronto
 
-Lives in [apps/romaneio/models.py](apps/romaneio/models.py). A `Romaneio` has `ItemRomaneio` line items; in DETALHADO mode each item also has `UnidadeRomaneio` rows.
+1. Testes novos ou ajustados para a mudança; a suíte roda sem falhas além das conhecidas.
+2. `makemigrations --check --dry-run` limpo, ou migração nova revisada.
+3. Documentação atualizada no mesmo commit (tabela "Como manter" em `docs/README.md`), incluindo `CHANGELOG.md` em `[Não lançado]` e o `ROADMAP.md` se um `DT`/`P` foi resolvido.
+4. Nenhum dado real de ambiente em arquivo versionado.
 
-- **Two modalidades**: `SIMPLES` (user enters `quantidade_m3_total` directly per item) and `DETALHADO` (item m³ is summed from `UnidadeRomaneio`, each computed from `comprimento`/`rodo`/descontos via `calcular_m3_detalhado()`).
-- **Two tipo_romaneio**: `NORMAL` / `COM_FRETE` — selects which price (`preco_normal` vs `preco_com_frete`) `TipoMadeira.get_preco()` returns.
-- Totals cascade upward via `atualizar_totais()`: `UnidadeRomaneio.save/delete` → `ItemRomaneio.atualizar_totais()` → `Romaneio.atualizar_totais()`. The `save()`/`delete()` overrides keep these in sync, so prefer the ORM save/delete path over bulk operations that bypass them.
-- `valor_bruto` = sum of items; `valor_total` = net after the romaneio's `desconto` percentage; `m3_total` = sum of item m³. These three fields are `editable=False` and always derived — never set them by hand.
-- All money/m³ math uses `Decimal` with `ROUND_HALF_UP` and fixed quantization steps (`VALOR_STEP` = 0.01, `QTD_M3_STEP` = 0.001).
+## O que ler antes de cada tarefa
 
-### Client balance (saldo)
+| Tarefa | Leia |
+|---|---|
+| Cálculo de totais, saldo, validações, permissões | `docs/regras-de-negocio.md` |
+| Relatório, filtro ou exportação | `docs/relatorios.md` |
+| Modelo, rota, app nova | `docs/arquitetura.md` |
+| Deploy, servidor, variáveis de ambiente | `docs/operacao.md`, `.env.example` |
+| Tela, CSS, componentes | `docs/design.md` |
+| Corrigir um defeito conhecido | `ROADMAP.md` (débitos `DT-xx`) |
+| Entender uma escolha antiga | `docs/decisoes.md` |
 
-`Cliente.saldo_atual` (property in [apps/cadastros/models.py](apps/cadastros/models.py)) = total payments − total sales (`valor_total`). **Never persisted** — always computed live. Negative = client owes money. There is no manual balance adjustment; this is a deliberate rule for traceability. The `atualizar_saldo()` method is legacy — use `saldo_atual`.
-
-### Reports & exports
-
-[apps/relatorios/views.py](apps/relatorios/views.py) re-exports the four report views/exports from split modules (`views_ficha_romaneio.py`, `views_ficha_madeira.py`, `views_fluxo_financeiro.py`, `views_saldo_cliente.py`) — edit the per-report module, not the aggregator. Shared filter helpers (`parse_mes_ano`, `apply_mes_ano_filter`, `get_periodo_filtro`, `safe_filename`) are in [apps/relatorios/utils.py](apps/relatorios/utils.py); reports filter by month/year (+ optional client).
-
-- **Excel** exports use `openpyxl`. **PDF** exports render an HTML template then `weasyprint.HTML(...).write_pdf()` (imported lazily inside the view; `reportlab` is a fallback). WeasyPrint needs native system libs (cairo/pango/etc. — see `requirements.txt` header); PDF views degrade gracefully if it's unavailable.
-
-### Auth
-
-`apps.core.auth_backends.UsernameOrEmailBackend` lets users log in with username **or** email. Password reset is the standard Django flow with custom templates in `templates/registration/` and `SITE_DOMAIN`/`SITE_PROTOCOL` from `.env` for building email links.
-
-## Conventions
-
-- Keep money/m³ in `Decimal`, quantize with the existing `*_STEP` constants and `ROUND_HALF_UP`; don't introduce floats into the totals/saldo path.
-- Use `timezone.localdate()` (settings are `USE_TZ=True`, `TIME_ZONE=America/Sao_Paulo`); date locale formatting relies on `USE_L10N` + pt-BR separators.
-- New reports follow the existing `views_*.py` + template + Excel/PDF export pattern and reuse the `utils.py` filter helpers.
-- Tests use plain `unittest`-style Django `TestCase` with factory helpers in [apps/tests/factories.py](apps/tests/factories.py) (`create_cliente`, `create_romaneio`, etc.) — no factory_boy/pytest.
-
-## Deployment
-
-Push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml): SSH to the VPS, `git pull`, install requirements into the existing `venv`, `migrate`, `collectstatic`, and restart the `gunicorn_romaneios` systemd service. The venv must already exist on the server.
+Dados reais do ambiente de produção, quando existirem nesta máquina, estão em `docs/ambiente.local.md` (fora do Git).
